@@ -1,0 +1,22 @@
+gradle.properties
+  h_f0ef6db9b226d1 4
+source/src/main/groovy/com/kezong/fataar/VariantProcessor.groovy
+  h_f0ef6db9b226d1 77-78,80-83,230-246,248-305,307-369,373-401,406-424
+gradle/wrapper/gradle-wrapper.properties
+  h_f0ef6db9b226d1 5
+example/gradle/wrapper/gradle-wrapper.properties
+  h_f0ef6db9b226d1 6
+source/upload.gradle
+  h_f0ef6db9b226d1 5-7,9,14,18-22,27,29-32,34-36,39-48,50-51,54-57,65-66,97,99-102,105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "9ad63a05d8dca85524485926b8a8287d59efb30d",
+  "prompts": {},
+  "humans": {
+    "h_f0ef6db9b226d1": {
+      "author": "张磊 <913305160@qq.com>"
+    }
+  }
+}
