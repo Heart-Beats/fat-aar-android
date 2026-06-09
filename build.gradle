@@ -1,0 +1,31 @@
+// ============================================================================
+// fat-aar-android — fat-aar Gradle 插件源码项目（Gradle 6.7.1）
+// ============================================================================
+// source/ 目录是插件源码，构建配置见 source/build.gradle
+//
+// 常用命令:
+//   ./gradlew :source:build                 构建插件
+//   ./gradlew :source:publishToMavenLocal   发布到本地 Maven
+//
+// example/ 是独立的消费项目（Gradle 7.2），需用独立 IDE 窗口打开
+// ============================================================================
+
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+        gradlePluginPortal()
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}
