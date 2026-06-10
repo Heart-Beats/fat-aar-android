@@ -1,0 +1,14 @@
+source/upload.gradle
+  h_f0ef6db9b226d1 4-7,9,12,14,17-18,21-22,27,29-30,34-36,38-41,43-44,46-47,49-56,59,66-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "cd576121d42577834aa13c00c7176cbd22660b66",
+  "prompts": {},
+  "humans": {
+    "h_f0ef6db9b226d1": {
+      "author": "张磊 <913305160@qq.com>"
+    }
+  }
+}
