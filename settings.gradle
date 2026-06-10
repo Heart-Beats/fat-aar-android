@@ -10,8 +10,8 @@ pluginManagement {
 rootProject.name = 'fat-aar-android'
 
 // --------------------------------------------------------------------
-// 根项目即 fat-aar Gradle 插件源码（Gradle 6.7.1 + AGP 4.2.0）
-// 构建产出由 source/build.gradle 和 source/upload.gradle 定义
+// 根项目即 fat-aar Gradle 插件源码（Gradle 8.11.1 + AGP 4.2.0 依赖）
+// 发布配置: source/upload.gradle（com.vanniktech.maven.publish → Central Portal）
 // --------------------------------------------------------------------
 // example/ 目录是独立的消费项目（Gradle 7.2 + AGP 7.0.2），
 // 用独立 IDE 窗口打开 example/ 目录即可构建和测试。

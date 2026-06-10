@@ -1,16 +1,26 @@
-apply plugin: 'groovy'
-apply from: "./upload.gradle"
-
 buildscript {
     repositories {
         mavenCentral()
     }
 }
 
+plugins {
+    id 'groovy'
+    // com.vanniktech.maven.publish 已内置 maven-publish + signing，无需重复 apply
+    id 'com.vanniktech.maven.publish' version '0.32.0'
+}
+
+apply from: "./upload.gradle"
+
 repositories {
     mavenCentral()
     google()
     maven { url "https://plugins.gradle.org/m2/" }
+}
+
+javadoc {
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
 }
 
 dependencies {

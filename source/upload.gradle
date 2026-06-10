@@ -1,110 +1,72 @@
-apply plugin: 'maven-publish'
-apply plugin: 'java'
 apply plugin: 'signing'
 
-task sourcesJar(type: Jar) {
-    from sourceSets.main.allJava
-    classifier = 'sources'
-}
-
-task javadocJar(type: Jar) {
-    from javadoc
-    classifier = 'javadoc'
-}
-
-
-File secretPropsFile = project.rootProject.file('local.properties')
-if (secretPropsFile.exists()) {
-    println "Found secret props file, loading props"
-    Properties p = new Properties()
-    p.load(new FileInputStream(secretPropsFile))
-    p.each { name, value ->
-        ext[name] = value
+// ============================================================================
+// GPG 签名 — 本地使用 gpg 命令行，CI 使用 useInMemoryPgpKeys
+// ============================================================================
+def getSecret = { String key, String envKey = null ->
+    File secretPropsFile = project.rootProject.file('local.properties')
+    if (secretPropsFile.exists()) {
+        Properties p = new Properties()
+        p.load(new FileInputStream(secretPropsFile))
+        if (p.containsKey(key)) return p.getProperty(key)
     }
-} else {
-    println "No props file, loading env vars"
+    if (envKey != null) {
+        def env = System.getenv(envKey)
+        if (env != null) return env
+    }
+    if (project.hasProperty(key)) return project.property(key)
+    return null
 }
 
-publishing {
-    publications {
-        release(MavenPublication) {
-            // The coordinates of the library, being set from variables that
-            // we'll set up in a moment
-            groupId PUBLISH_GROUP_ID
-            artifactId PUBLISH_ARTIFACT_ID
-            version PUBLISH_VERSION
-
-            artifact jar
-            artifact sourcesJar
-            artifact javadocJar
-
-            // Self-explanatory metadata for the most part
-            pom {
-                name = PUBLISH_ARTIFACT_ID
-                description = 'A gradle plugin that merge dependencies into the final aar file works with AGP 3.+'
-                // If your project has a dedicated site, use its URL here
-                url = 'https://github.com/kezong/fat-aar-android'
-                licenses {
-                    license {
-                        name = 'The MIT License'
-                        url = 'https://opensource.org/licenses/MIT'
-                    }
-                }
-                developers {
-                    developer {
-                        id = 'kezong'
-                        name = 'kezong'
-                        email = 'kezong1811@gmail.com'
-                    }
-                }
-                // Version control info, if you're using GitHub, follow the format as seen here
-                scm {
-                    connection = 'scm:git:github.com/kezong/fat-aar-android.git'
-                    developerConnection = 'scm:git:ssh://github.com/kezong/fat-aar-android.git'
-                    url = 'https://github.com/kezong/fat-aar-android/tree/master'
-                }
-                // A slightly hacky fix so that your POM will include any transitive dependencies
-                // that your library builds upon
-                withXml {
-                    def dependenciesNode = asNode().appendNode('dependencies')
-
-                    project.configurations.implementation.allDependencies.each {
-                        if (it.group == "com.android.tools.build" && it.name == "gradle") {
-                            return
-                        }
-                        if (it.group == null) {
-                            return
-                        }
-                        def dependencyNode = dependenciesNode.appendNode('dependency')
-                        dependencyNode.appendNode('groupId', it.group)
-                        dependencyNode.appendNode('artifactId', it.name)
-                        dependencyNode.appendNode('version', it.version)
-                    }
-                }
-            }
-        }
-    }
-    repositories {
-        // The repository to publish to, Sonatype/MavenCentral
-        maven {
-            // This is an arbitrary name, you may also use "mavencentral" or
-            // any other name that's descriptive for you
-            name = "fat-aar"
-
-            def releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-            def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
-            // You only need this if you want to publish snapshots, otherwise just set the URL
-            // to the release repo directly
-            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-
-            // The username and password we've fetched earlier
-            credentials {
-                username ossrhUsername
-                password ossrhPassword
-            }
-        }
-    }
-}
 signing {
-    sign publishing.publications
+    def signingKey = getSecret("signing.privateKey", "SIGNING_KEY")
+    def signingPassword = getSecret("signing.password", "SIGNING_PASSWORD")
+
+    if (signingKey != null && signingPassword != null) {
+        // CI 环境：使用 ASCII-armored 内存密钥签名（仅支持 RSA 密钥）
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    } else {
+        // 本地环境：通过 gpg 命令行工具签名（兼容 Ed25519/ECDSA/RSA 所有密钥类型）
+        useGpgCmd()
+    }
+}
+
+// ============================================================================
+// Maven Central Portal 发布配置
+// 使用 com.vanniktech.maven.publish 插件，自动对接 https://central.sonatype.com
+// ============================================================================
+
+mavenPublishing {
+    // 发布到新 Maven Central Portal（不是旧的 OSSRH s01）
+    publishToMavenCentral("CENTRAL_PORTAL")
+
+    // 下发到 Maven Central 时自动签名
+    signAllPublications()
+
+    // 发布坐标 — 从 gradle.properties 读取
+    coordinates(PUBLISH_GROUP_ID, PUBLISH_ARTIFACT_ID, PUBLISH_VERSION)
+
+    pom {
+        name = PUBLISH_ARTIFACT_ID
+        description = 'A gradle plugin that merge dependencies into the final aar file works with AGP 3.+'
+        url = 'https://github.com/kezong/fat-aar-android'
+        licenses {
+            license {
+                name = 'The MIT License'
+                url = 'https://opensource.org/licenses/MIT'
+            }
+        }
+        developers {
+            developer {
+                id = 'kezong'
+                name = 'kezong'
+                email = 'kezong1811@gmail.com'
+            }
+        }
+        scm {
+            connection = 'scm:git:github.com/kezong/fat-aar-android.git'
+            developerConnection = 'scm:git:ssh://github.com/kezong/fat-aar-android.git'
+            url = 'https://github.com/kezong/fat-aar-android/tree/master'
+        }
+    }
 }
