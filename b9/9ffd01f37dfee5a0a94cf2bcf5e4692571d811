@@ -1,0 +1,35 @@
+source/src/main/groovy/com/kezong/fataar/ExplodedHelper.groovy
+  s_fd830b7da2ff2b::t_c9b840e99df205 61
+source/src/main/groovy/com/kezong/fataar/VariantProcessor.groovy
+  s_fd830b7da2ff2b::t_96c24ac12d1cbf 236-237,242,244-246,250-251,253-257,259-263,265-271,274-276,278,281-282
+  s_fd830b7da2ff2b::t_66e129db9529cd 482-498
+  s_fd830b7da2ff2b::t_211267c6c1bd7b 279
+  s_fd830b7da2ff2b::t_0574143195b46c 264
+  s_fd830b7da2ff2b::t_a61a81527f77ca 243,247
+  s_fd830b7da2ff2b::t_cfb56c08f4c47d 86-88
+  s_fd830b7da2ff2b::t_44fb8c2e558c33 296-378,381-409
+  s_fd830b7da2ff2b::t_8300cbfa32133c 241
+source/src/main/groovy/com/kezong/fataar/FatAarPlugin.groovy
+  s_fd830b7da2ff2b::t_0882f346cddfbb 96-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "b99ffd01f37dfee5a0a94cf2bcf5e4692571d811",
+  "prompts": {},
+  "humans": {
+    "h_f0ef6db9b226d1": {
+      "author": "张磊 <913305160@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_fd830b7da2ff2b": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "64a66df8-abaf-4970-8c78-149dc014a5ae",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "张磊 <913305160@qq.com>"
+    }
+  }
+}
