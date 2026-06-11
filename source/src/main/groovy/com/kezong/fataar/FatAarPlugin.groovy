@@ -5,6 +5,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.ProjectConfigurationException
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.artifacts.ResolvedDependency
 
@@ -36,6 +37,7 @@ class FatAarPlugin implements Plugin<Project> {
         project.extensions.create(FatAarExtension.NAME, FatAarExtension)
         createConfigurations()
         registerTransform()
+        FatUtils.logAnytime("fat-aar plugin applied to project '${project.path}' (build: ${getBuildDateTime()})")
         project.afterEvaluate {
             doAfterEvaluate()
         }
@@ -45,6 +47,19 @@ class FatAarPlugin implements Plugin<Project> {
         transform = new RClassesTransform(project)
         // register in project.afterEvaluate is invalid.
         project.android.registerTransform(transform)
+    }
+
+    private static String getBuildDateTime() {
+        try {
+            def props = new Properties()
+            def stream = FatAarPlugin.class.classLoader.getResourceAsStream('fat-aar-build.properties')
+            if (stream != null) {
+                props.load(stream)
+                stream.close()
+                return props.getProperty('build.date_time', 'unknown')
+            }
+        } catch (Exception ignore) {}
+        return 'unknown'
     }
 
     private void doAfterEvaluate() {
@@ -69,8 +84,26 @@ class FatAarPlugin implements Plugin<Project> {
                 }
             }
 
+            // Collect embed project map using ProjectDependency (same as hook script)
+            Map<String, Project> embedProjectsMap = new HashMap<>()
+            embedConfigurations.each { configuration ->
+                if (configuration.name == CONFIG_NAME
+                        || configuration.name == variant.getBuildType().name + CONFIG_SUFFIX
+                        || configuration.name == variant.getFlavorName() + CONFIG_SUFFIX
+                        || configuration.name == variant.name + CONFIG_SUFFIX) {
+                    configuration.dependencies.each { dep ->
+                        if (dep instanceof ProjectDependency) {
+                            Project p = dep.dependencyProject
+                            embedProjectsMap.put(dep.name, p)
+                            embedProjectsMap.put(p.name, p)
+                            embedProjectsMap.put(p.path, p)
+                        }
+                    }
+                }
+            }
+
             if (!artifacts.isEmpty()) {
-                def processor = new VariantProcessor(project, variant)
+                def processor = new VariantProcessor(project, variant, embedProjectsMap)
                 processor.processVariant(artifacts, firstLevelDependencies, transform)
             }
         }

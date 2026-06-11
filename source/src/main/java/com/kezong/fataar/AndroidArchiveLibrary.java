@@ -23,6 +23,13 @@ public class AndroidArchiveLibrary {
 
     private String mPackageName;
 
+    /**
+     * 当此 archive 来源于本地 Project 依赖（embed project(':xxx')）时，
+     * 保存该子项目的真实引用，用于跨项目任务依赖声明。
+     * 对于远程 Maven AAR 依赖，此字段为 null。
+     */
+    private Project mEmbedProject;
+
     public AndroidArchiveLibrary(Project project, ResolvedArtifact artifact, String variantName) {
         if (!"aar".equals(artifact.getType())) {
             throw new IllegalArgumentException("artifact must be aar type!");
@@ -30,6 +37,10 @@ public class AndroidArchiveLibrary {
         mProject = project;
         mArtifact = artifact;
         mVariantName = variantName;
+    }
+
+    public Project getProject() {
+        return mProject;
     }
 
     public String getGroup() {
@@ -134,5 +145,13 @@ public class AndroidArchiveLibrary {
 
     public File getDataBindingLogFolder() {
         return new File(getRootFolder(), "data-binding-base-class-log");
+    }
+
+    public Project getEmbedProject() {
+        return mEmbedProject;
+    }
+
+    public void setEmbedProject(Project embedProject) {
+        this.mEmbedProject = embedProject;
     }
 }

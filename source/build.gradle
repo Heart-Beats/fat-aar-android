@@ -23,6 +23,20 @@ javadoc {
     options.charSet = 'UTF-8'
 }
 
+// Generate build timestamp as version identifier
+task generateBuildInfo {
+    def outputDir = layout.buildDirectory.dir("generated/buildinfo")
+    outputs.dir(outputDir)
+    outputs.upToDateWhen { false } // 每次都重新执行，确保时间戳更新
+    doLast {
+        def dir = outputDir.get().asFile
+        dir.mkdirs()
+        def buildDateTime = new Date().format('yyyy-MM-dd HH:mm:ss')
+        new File(dir, "fat-aar-build.properties").text = "build.date_time=${buildDateTime}\n"
+    }
+}
+sourceSets.main.output.dir(generateBuildInfo.outputs.files, builtBy: generateBuildInfo)
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation gradleApi()

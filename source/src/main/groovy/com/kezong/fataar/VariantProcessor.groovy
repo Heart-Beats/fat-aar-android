@@ -3,10 +3,13 @@ package com.kezong.fataar
 import com.android.build.gradle.api.LibraryVariant
 import com.android.build.gradle.internal.api.DefaultAndroidSourceSet
 import com.android.build.gradle.tasks.ManifestProcessorTask
+import com.kezong.fataar.tasks.MergeDataBindingMetadataTask
+import com.kezong.fataar.tasks.MergeEmbedServicesAndKotlinTask
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.artifacts.ResolvedDependency
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.internal.artifacts.ResolvableDependency
 import org.gradle.api.internal.tasks.CachingTaskDependencyResolveContext
 import org.gradle.api.tasks.Copy
@@ -18,7 +21,6 @@ import org.gradle.api.tasks.bundling.Zip
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-
 /**
  * Core
  * Processor for variant
@@ -39,10 +41,13 @@ class VariantProcessor {
 
     private TaskProvider mMergeClassTask
 
-    VariantProcessor(Project project, LibraryVariant variant) {
+    private Map<String, Project> mEmbedProjectsMap
+
+    VariantProcessor(Project project, LibraryVariant variant, Map<String, Project> embedProjectsMap) {
         mProject = project
         mVariant = variant
         mVersionAdapter = new VersionAdapter(project, variant)
+        mEmbedProjectsMap = embedProjectsMap ?: new HashMap<>()
     }
 
     void addAndroidArchiveLibrary(AndroidArchiveLibrary library) {
@@ -74,8 +79,13 @@ class VariantProcessor {
         processJniLibs()
         processConsumerProguard()
         processGenerateProguard()
-        processDataBinding(bundleTask)
+
+        processJavaResourcesHooks()
+
         processRClasses(transform, bundleTask)
+
+        // 改造点 1：重构或增强原有的 DataBinding 处理（必须在 processRClasses 之后，因为需要 Hook reBundleAar 任务）
+        processDataBinding(bundleTask)
     }
 
     private static void printEmbedArtifacts(Collection<ResolvedArtifact> artifacts,
@@ -158,6 +168,16 @@ class VariantProcessor {
         TaskProvider task = mProject.getTasks().register(taskName, Zip.class) {
             it.from reBundleDir
             it.include "**"
+            
+            // Fix: Entry is a duplicate but no duplicate handling strategy has been set.
+            // Introduced in Gradle 7.0+
+            try {
+                def strategyClass = Class.forName("org.gradle.api.file.DuplicatesStrategy")
+                it.setDuplicatesStrategy(strategyClass.getField("INCLUDE").get(null))
+            } catch (Exception ignore) {
+                // Older Gradle versions don't have this or it's not strict.
+            }
+
             if (aarOutputFile == null) {
                 aarOutputFile = mVersionAdapter.getOutputFile()
             }
@@ -221,27 +241,99 @@ class VariantProcessor {
      * @param bundleTask
      */
     private void processDataBinding(TaskProvider<Task> bundleTask) {
-        bundleTask.configure {
-            doLast {
-                for (archiveLibrary in mAndroidArchiveLibraries) {
-                    if (archiveLibrary.dataBindingFolder != null && archiveLibrary.dataBindingFolder.exists()) {
-                        String filePath = "${DirectoryManager.getReBundleDirectory(mVariant).path}/${archiveLibrary.dataBindingFolder.name}"
-                        new File(filePath).mkdirs()
-                        mProject.copy {
-                            from archiveLibrary.dataBindingFolder
-                            into filePath
-                        }
-                    }
+        String variantName = mVariant.name.capitalize()
+        File reBundleDir = DirectoryManager.getReBundleDirectory(mVariant)
 
-                    if (archiveLibrary.dataBindingLogFolder != null && archiveLibrary.dataBindingLogFolder.exists()) {
-                        String filePath = "${DirectoryManager.getReBundleDirectory(mVariant).path}/${archiveLibrary.dataBindingLogFolder.name}"
-                        new File(filePath).mkdirs()
-                        mProject.copy {
-                            from archiveLibrary.dataBindingLogFolder
-                            into filePath
-                        }
+        // 极其关键：使用独立的合并中转站，不要直接写到 reBundleDir，防止被官方任务清空或产生增量构建冲突
+        def mergedDbBaseDir = mProject.file("${mProject.buildDir}/intermediates/merged_databinding_final/${mVariant.name}")
+
+        // 创建标准插件 Task
+        def mergeDbMetadataTask = mProject.tasks.register("mergeDataBindingMetadata${variantName}", MergeDataBindingMetadataTask) {
+            it.androidArchiveLibraries = mAndroidArchiveLibraries
+            it.variant = mVariant
+
+            it.dependsOn(mExplodeTasks)
+            it.mustRunAfter(bundleTask) // 确保 bundleTask 已经把 AAR 解压到 reBundleDir
+
+            // 建立对子模块编译任务的显示依赖 (fit-aar_hook_fix.gradle 逻辑)
+            for (archiveLibrary in mAndroidArchiveLibraries) {
+                if (archiveLibrary.embedProject != null) {
+                    def subJavacTask = archiveLibrary.embedProject.tasks.findByName("compile${variantName}JavaWithJavac")
+                    if (subJavacTask != null) it.dependsOn(subJavacTask)
+                }
+            }
+
+            // 声明输入输出，确保增量构建正确
+            it.outputs.dir(mergedDbBaseDir)
+        }
+
+        // 确保 reBundleAarTask 在合并任务之后执行，并挂载合并后的文件夹
+        mProject.tasks.named("reBundleAar${variantName}").configure {
+            it.dependsOn(mergeDbMetadataTask)
+            
+            // 1. 排除 reBundleDir 中原有的（主模块自带的）DataBinding 目录，防止重复或过时
+            it.eachFile { file ->
+                if (file.path.startsWith("data-binding/") || file.path.startsWith("data-binding-base-class-log/")) {
+                    // 如果文件来自 reBundleDir，则排除（我们会在下面从 mergedDbBaseDir 重新引入）
+                    if (file.file.absolutePath.replace("\\", "/").startsWith(reBundleDir.absolutePath.replace("\\", "/"))) {
+                        file.exclude()
                     }
                 }
+            }
+
+            // 2. 将合并后的 DataBinding 根目录挂载到 AAR 根目录
+            it.from(mergedDbBaseDir) {
+                include "data-binding/**"
+                include "data-binding-base-class-log/**"
+            }
+        }
+    }
+
+    private void processJavaResourcesHooks() {
+        String variantName = mVariant.name.capitalize()
+        def processJavaResTask = mProject.tasks.findByName("process${variantName}JavaRes")
+
+        if (processJavaResTask != null) {
+            def mergedServicesDir = mProject.file("${mProject.buildDir}/intermediates/merged_services/${mVariant.name}")
+            def extractedKotlinModulesDir = mProject.file("${mProject.buildDir}/intermediates/extracted_kotlin_modules/${mVariant.name}")
+
+            // Create standalone merge task, track sub-project references via embedProject to avoid circular deps
+            def mergeServiceAndKotlinTask = mProject.tasks.register("mergeEmbedServicesAndKotlin${variantName}", MergeEmbedServicesAndKotlinTask) {
+                it.androidArchiveLibraries = mAndroidArchiveLibraries
+                it.variant = mVariant
+
+                it.dependsOn(mExplodeTasks)
+                // Wire dependency chain: ensure sub-module resource tasks and Kotlin compile are ready first
+                for (archiveLibrary in mAndroidArchiveLibraries) {
+                    if (archiveLibrary.embedProject != null) {
+                        def subProcessRes = archiveLibrary.embedProject.tasks.findByName("process${variantName}JavaRes")
+                        if (subProcessRes != null) it.dependsOn(subProcessRes)
+                        def subCompileKotlin = archiveLibrary.embedProject.tasks.findByName("compile${variantName}Kotlin")
+                        if (subCompileKotlin != null) it.dependsOn(subCompileKotlin)
+                    }
+                }
+            }
+
+            // 配置任务依赖关系（与 hook 脚本一致）
+            processJavaResTask.dependsOn(mergeServiceAndKotlinTask)
+
+            // 智能闭包过滤器：拦截原始 SPI 和 Kotlin 模块文件，防止与合并后的版本重复
+            processJavaResTask.exclude { details ->
+                def srcPath = details.file.absolutePath
+                // 来自亲手建立的合并输出临时目录，绝不能过滤，放行！
+                if (srcPath.contains("merged_services") || srcPath.contains("extracted_kotlin_modules")) {
+                    return false
+                }
+                // 拦截来自各个子模块分散的原始旧文件，防止它们重复写入造成错误
+                return details.path.startsWith("META-INF/services/") || details.path.endsWith(".kotlin_module")
+            }
+
+            // 完美喂入合并后的新资源
+            processJavaResTask.from(mergedServicesDir) {
+                include "META-INF/services/*"
+            }
+            processJavaResTask.from(extractedKotlinModulesDir) {
+                into "META-INF"
             }
         }
     }
@@ -257,6 +349,7 @@ class VariantProcessor {
         }
     }
 
+
     /**
      * exploded artifact files
      */
@@ -269,6 +362,24 @@ class VariantProcessor {
                 addJarFile(artifact.file)
             } else if (FatAarPlugin.ARTIFACT_TYPE_AAR == artifact.type) {
                 AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(mProject, artifact, mVariant.name)
+                // Primary: lookup from ProjectDependency map (using module name)
+                Project embedProj = mEmbedProjectsMap.get(artifact.moduleVersion.id.name)
+                if (embedProj == null) {
+                    // Fallback: try ProjectComponentIdentifier
+                    try {
+                        def compId = artifact.id.componentIdentifier
+                        if (compId instanceof ProjectComponentIdentifier) {
+                            def projectPath = compId.projectPath
+                            embedProj = mProject.rootProject.allprojects.find { it.path == projectPath }
+                        }
+                    } catch (Exception ignore) {}
+                }
+                if (embedProj != null && embedProj != mProject) {
+                    archiveLibrary.setEmbedProject(embedProj)
+//                    FatUtils.logAnytime("[embed] ${artifact.moduleVersion.id.name} → local project '${embedProj.path}'")
+                } else {
+//                    FatUtils.logAnytime("[embed] ${artifact.moduleVersion.id.name} → remote Maven artifact")
+                }
                 addAndroidArchiveLibrary(archiveLibrary)
                 Set<Task> dependencies
 
@@ -397,12 +508,6 @@ class VariantProcessor {
                     from outputDir
                     into javacDir
                     exclude 'META-INF/'
-                }
-
-                mProject.copy {
-                    from outputDir.absolutePath + "/META-INF"
-                    into DirectoryManager.getKotlinMetaDirectory(mVariant)
-                    include '*.kotlin_module'
                 }
             }
         }
