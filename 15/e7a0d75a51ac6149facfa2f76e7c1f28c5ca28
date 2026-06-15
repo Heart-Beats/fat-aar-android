@@ -1,0 +1,50 @@
+source/src/main/groovy/com/kezong/fataar/FatAarPlugin.groovy
+  s_fd830b7da2ff2b::t_0882f346cddfbb 96-99
+source/src/main/groovy/com/kezong/fataar/VariantProcessor.groovy
+  s_fd830b7da2ff2b::t_a61a81527f77ca 254,261-262
+  s_fd830b7da2ff2b::t_211267c6c1bd7b 271
+  s_fd830b7da2ff2b::t_96c24ac12d1cbf 247-248,256-260,265-266,268-270,274-279,281-282,284-285
+  s_fd830b7da2ff2b::t_cfb56c08f4c47d 86
+  s_fd830b7da2ff2b::t_9cc715cbf0b27e 12,44-46,50,82-83,87-88
+  s_fd830b7da2ff2b::t_66e129db9529cd 365-381
+  s_fd830b7da2ff2b::t_0574143195b46c 267
+  s_fd830b7da2ff2b::t_44fb8c2e558c33 305-312
+  s_95ed3dfd71b166::t_b54e61fb9fd3c6 172-179
+source/src/main/groovy/com/kezong/fataar/tasks/MergeEmbedServicesAndKotlinTask.groovy
+  s_95ed3dfd71b166::t_5dd768131fbcb3 3-147
+source/src/main/groovy/com/kezong/fataar/ExplodedHelper.groovy
+  s_fd830b7da2ff2b::t_c9b840e99df205 61
+source/src/main/groovy/com/kezong/fataar/tasks/MergeDataBindingMetadataTask.groovy
+  s_95ed3dfd71b166::t_008f43e7482b7c 64
+  s_95ed3dfd71b166::t_13cc546a81ad5e 3,11-25,75
+  s_95ed3dfd71b166::t_fed6149c128cc2 5,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "15e7a0d75a51ac6149facfa2f76e7c1f28c5ca28",
+  "prompts": {},
+  "humans": {
+    "h_f0ef6db9b226d1": {
+      "author": "张磊 <913305160@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_95ed3dfd71b166": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "d07e240b-aecd-4b43-b273-da2224c831d9",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "张磊 <913305160@qq.com>"
+    },
+    "s_fd830b7da2ff2b": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "64a66df8-abaf-4970-8c78-149dc014a5ae",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "张磊 <913305160@qq.com>"
+    }
+  }
+}
