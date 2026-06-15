@@ -1,0 +1,14 @@
+gradle.properties
+  h_f0ef6db9b226d1 2,4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "28de46f27e17a118fd26e58bbe94d3cd86653661",
+  "prompts": {},
+  "humans": {
+    "h_f0ef6db9b226d1": {
+      "author": "张磊 <913305160@qq.com>"
+    }
+  }
+}
