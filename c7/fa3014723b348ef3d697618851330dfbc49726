@@ -1,0 +1,24 @@
+source/src/main/groovy/com/kezong/fataar/tasks/MergeDataBindingMetadataTask.groovy
+  s_95ed3dfd71b166::t_8d07512c31d95b 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "c7fa3014723b348ef3d697618851330dfbc49726",
+  "prompts": {},
+  "humans": {
+    "h_f0ef6db9b226d1": {
+      "author": "张磊 <913305160@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_95ed3dfd71b166": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "d07e240b-aecd-4b43-b273-da2224c831d9",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "张磊 <913305160@qq.com>"
+    }
+  }
+}
