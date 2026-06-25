@@ -6,11 +6,7 @@ buildscript {
 
 plugins {
     id 'groovy'
-    // com.vanniktech.maven.publish 已内置 maven-publish + signing，无需重复 apply
-    id 'com.vanniktech.maven.publish' version '0.32.0'
 }
-
-apply from: "./upload.gradle"
 
 repositories {
     mavenCentral()
@@ -27,7 +23,7 @@ javadoc {
 task generateBuildInfo {
     def outputDir = layout.buildDirectory.dir("generated/buildinfo")
     outputs.dir(outputDir)
-    outputs.upToDateWhen { false } // 每次都重新执行，确保时间戳更新
+    outputs.upToDateWhen { false }
     doLast {
         def dir = outputDir.get().asFile
         dir.mkdirs()

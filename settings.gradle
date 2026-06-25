@@ -11,7 +11,7 @@ rootProject.name = 'fat-aar-android'
 
 // --------------------------------------------------------------------
 // 根项目即 fat-aar Gradle 插件源码（Gradle 8.11.1 + AGP 4.2.0 依赖）
-// 发布配置: source/upload.gradle（com.vanniktech.maven.publish → Central Portal）
+// 发布配置: 根目录 maven_upload.gradle（统一管理所有子项目 Maven Central 发布）
 // --------------------------------------------------------------------
 // example/ 目录是独立的消费项目（Gradle 7.2 + AGP 7.0.2），
 // 用独立 IDE 窗口打开 example/ 目录即可构建和测试。

@@ -1,8 +1,7 @@
 // ============================================================================
 // fat-aar-android — fat-aar Gradle 插件源码项目（Gradle 8.11.1）
 // ============================================================================
-// 发布使用 com.vanniktech.maven.publish 插件，对接 Maven Central Portal
-// 配置见 source/upload.gradle
+// 发布配置: maven_upload.gradle（统一管理所有子项目的 Maven Central 发布）
 //
 // 常用命令:
 //   ./gradlew publishToMavenLocal                                  发布到本地 Maven
@@ -10,7 +9,6 @@
 //
 // example/ 是独立的消费项目（Gradle 7.2），需用独立 IDE 窗口打开
 // ============================================================================
-
 buildscript {
     repositories {
         mavenCentral()
@@ -18,6 +16,10 @@ buildscript {
         gradlePluginPortal()
     }
 }
+
+
+// 发布到 Maven Central（新 Portal 账号）通过 maven_upload.gradle 注入的 Portal Publisher API 任务完成
+apply from: "${rootDir}/maven_upload.gradle"
 
 allprojects {
     repositories {
