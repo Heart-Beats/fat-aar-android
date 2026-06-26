@@ -1,0 +1,26 @@
+maven_upload.gradle
+  s_0d4ad00134f930::t_548dc4acbc2bbe 143
+  s_0d4ad00134f930::t_8aebb2fd2eef33 366,424,437
+  h_f0ef6db9b226d1 1-48,64-80,82-90,93-95,99-101,106,110,114-117,134,142,145,154,218-235,238-240,246,249,253-258,262-267,270-286,290-291,294-310,314,316-325,327-330,332,334-339,341-361,363-365,368-379,382-386,388-393,395,398-399,401-403,405-422,425-436,438-459,461-471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "9eeda93a45b2cc24e1a53175117b62ab4d5db20a",
+  "prompts": {},
+  "humans": {
+    "h_f0ef6db9b226d1": {
+      "author": "张磊 <913305160@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_0d4ad00134f930": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41e945c9-d08f-4346-a21d-def00ff840f5",
+        "model": "LongCat-2.0-Preview-LongCatAI"
+      },
+      "human_author": "张磊 <913305160@qq.com>"
+    }
+  }
+}
