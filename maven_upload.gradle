@@ -117,6 +117,106 @@ def createSourcesAndJavadocTasks = { sub, isAndroidLib, isJavaLib, isKotlinAndro
 }
 
 /*
+ * POM 文件后处理统一入口。
+ * 在 generatePomFileForMavenPublication 任务完成后执行，处理三类问题：
+ *
+ * 1. 中文乱码修复：Groovy Properties 读取 gradle.properties 时使用平台编码（GBK），
+ *    导致中文被错误编码。以 UTF-8 重新读取并替换。
+ *
+ * 2. packaging 修正：当组件（release/java）为 null 时，Gradle 默认生成 packaging=pom，
+ *    需要根据项目类型修正为 aar 或 jar。
+ *
+ * 3. 依赖补充：当组件为 null 时，from component 无法自动导出依赖，
+ *    需要手动收集并添加到 POM，同时映射正确的 scope。
+ *
+ * 参数：
+ *   sub              - 子项目
+ *   packaging        - 目标 packaging 类型（'aar' / 'jar'），为 null 时不修正
+ *   addDependencies  - 是否需要手动添加依赖（组件为 null 时设为 true）
+ *
+ * scope 映射规则：
+ *   api              → compile    （编译+运行时可见，可传递）
+ *   implementation   → runtime    （仅运行时可见，可传递）
+ *   compileOnly      → provided   （编译时可见，运行时不包含）
+ *   runtimeOnly      → runtime    （仅运行时可见）
+ *   testImplementation → test     （仅测试时可见）
+ */
+def fixPomFile = { sub, String packaging = null, boolean addDependencies = false ->
+    sub.tasks.named('generatePomFileForMavenPublication').configure {
+        doLast {
+            def pomFile = sub.file("build/publications/maven/pom-default.xml")
+            if (!pomFile.exists()) return
+
+            def pomContent = pomFile.getText('UTF-8')
+
+            // 1. 修正 packaging
+            if (packaging != null) {
+                pomContent = pomContent.replace('<packaging>pom</packaging>', "<packaging>${packaging}</packaging>")
+            }
+
+            // 2. 手动添加依赖（仅在组件为 null 时需要）
+            if (addDependencies && !pomContent.contains('<dependencies>')) {
+                def collectedDeps = [:]
+                def configScopeMap = [
+                        'api'               : 'compile',
+                        'implementation'    : 'runtime',
+                        'compileOnly'       : 'provided',
+                        'runtimeOnly'       : 'runtime',
+                        'testImplementation': 'test'
+                ]
+                def configPriority = ['testImplementation', 'runtimeOnly', 'compileOnly', 'implementation', 'api']
+
+                configPriority.each { configName ->
+                    try {
+                        sub.configurations.findByName(configName)?.allDependencies?.each { dep ->
+                            if (dep.group != null && dep.name != null && dep.version != null) {
+                                def key = "${dep.group}:${dep.name}"
+                                collectedDeps[key] = [dep.group, dep.name, dep.version, configScopeMap[configName]]
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                if (!collectedDeps.isEmpty()) {
+                    def depsBuilder = new StringBuilder()
+                    depsBuilder.append('  <dependencies>\n')
+                    collectedDeps.each { key, info ->
+                        def (depGroup, depName, depVersion, scope) = info
+                        if (depName != sub.name
+                                && depVersion != 'unspecified'
+                                && !depGroup.startsWith('Project ')) {
+                            depsBuilder.append('    <dependency>\n')
+                            depsBuilder.append("      <groupId>${depGroup}</groupId>\n")
+                            depsBuilder.append("      <artifactId>${depName}</artifactId>\n")
+                            depsBuilder.append("      <version>${depVersion}</version>\n")
+                            depsBuilder.append("      <scope>${scope}</scope>\n")
+                            depsBuilder.append('    </dependency>\n')
+                        }
+                    }
+                    depsBuilder.append('  </dependencies>\n')
+                    pomContent = pomContent.replace('</project>', "${depsBuilder}</project>")
+                }
+            }
+
+            // 3. 修复中文乱码
+            def descPropsFile = sub.file('gradle.properties')
+            if (descPropsFile.exists()) {
+                def descProps = new Properties()
+                descProps.load(new InputStreamReader(new FileInputStream(descPropsFile), 'UTF-8'))
+                def correctDesc = descProps.getProperty('PUBLISH_POM_DESCRIPTION', '')
+                if (correctDesc) {
+                    pomContent = pomContent.replaceAll(
+                            '<description>.*?</description>',
+                            "<description>${correctDesc}</description>")
+                }
+            }
+
+            pomFile.setText(pomContent, 'UTF-8')
+        }
+    }
+}
+
+/*
  * 计算 publishTarget（在 subprojects 之外读取一次即可）
  */
 def publishTarget = rootProject.hasProperty('publishTarget')
@@ -195,15 +295,49 @@ rootProject.subprojects { sub ->
                         }
                     } else if (isAndroidLib || isKotlinAndroid) {
                         /* Android Library：发布 release 变体 */
-                        from sub.components.findByName('release') ?: sub.components.findByName('android')
+                        def releaseComponent = sub.components.findByName('release')
+                                ?: sub.components.findByName('android')
+                        if (releaseComponent != null) {
+                            from releaseComponent
+                        } else {
+                            // AGP 8.x 未配置 singleVariant 时，手动指定 AAR 产物
+                            def aarFile = sub.file("build/outputs/aar/${sub.name}-release.aar")
+                            artifact(aarFile) { extension = 'aar' }
+                            // 确保 bundleReleaseAar 在所有发布相关任务之前执行
+                            sub.tasks.configureEach { task ->
+                                if (task.name.startsWith('publish') || task.name.startsWith('sign')) {
+                                    try { task.dependsOn "bundleReleaseAar" } catch (Exception ignored) {}
+                                }
+                            }
+                        }
+                        // POM 后处理：packaging=aar + 中文修复；组件为 null 时还需补充依赖
+                        fixPomFile(sub, 'aar', releaseComponent == null)
                     } else if (isJavaLib || isKotlinJvm || isGroovy) {
                         /* Java / Kotlin JVM / Groovy：发布 java 组件 */
-                        from sub.components.findByName('java')
+                        def javaComponent = sub.components.findByName('java')
+                        if (javaComponent != null) {
+                            from javaComponent
+                        } else {
+                            // java 组件不存在时，手动指定 JAR 产物
+                            def jarFile = sub.file("build/libs/${sub.name}-${sub.version}.jar")
+                            if (!jarFile.exists()) {
+                                jarFile = sub.file("build/libs/${sub.name}.jar")
+                            }
+                            artifact(jarFile) { extension = 'jar' }
+                            // 确保 jar 打包任务在签名/发布之前执行
+                            sub.tasks.configureEach { task ->
+                                if (task.name.startsWith('publish') || task.name.startsWith('sign')) {
+                                    try { task.dependsOn "jar" } catch (Exception ignored) {}
+                                }
+                            }
+                        }
+                        // POM 后处理：packaging=jar + 中文修复；组件为 null 时还需补充依赖
+                        fixPomFile(sub, 'jar', javaComponent == null)
                     } else {
                         throw new GradleException(
-                            "项目 '${sub.name}'：无法识别产物类型。" +
-                            "请 apply 已知插件（java-library / com.android.library 等）" +
-                            "或在 build.gradle 中设置 ext.publishArtifact。")
+                                "项目 '${sub.name}'：无法识别产物类型。" +
+                                        "请 apply 已知插件（java-library / com.android.library 等）" +
+                                        "或在 build.gradle 中设置 ext.publishArtifact。")
                     }
 
                     // 统一添加 sources + javadoc（Maven Central 强制要求）
@@ -355,8 +489,8 @@ def configurePortalUploadTasks(sub, getSecret) {
                     "${pub.groupId.replace('.', '/')}/${pub.artifactId}/${pub.version}")
             if (!gavDir.exists()) {
                 throw new GradleException(
-                    "m2 GAV 目录不存在: ${gavDir.absolutePath}，" +
-                    "请先执行 publishMavenPublicationToMavenLocal")
+                        "m2 GAV 目录不存在: ${gavDir.absolutePath}，" +
+                                "请先执行 publishMavenPublicationToMavenLocal")
             }
             gavDir.eachFile { f ->
                 if (f.isFile() && !f.name.endsWith('.md5') && !f.name.endsWith('.sha1')) {
@@ -414,10 +548,10 @@ def configurePortalUploadTasks(sub, getSecret) {
             def portalPass = getSecret("portalPassword", "PORTAL_PASSWORD")
             if (!portalUser || !portalPass) {
                 throw new GradleException(
-                    "缺少 Central Portal 凭证：请在 local.properties 配置 " +
-                    "portalUsername / portalPassword（Portal User Token），" +
-                    "或设置环境变量 PORTAL_USERNAME / PORTAL_PASSWORD。" +
-                    "当前 portalUser=${portalUser ?: '<空>'}")
+                        "缺少 Central Portal 凭证：请在 local.properties 配置 " +
+                                "portalUsername / portalPassword（Portal User Token），" +
+                                "或设置环境变量 PORTAL_USERNAME / PORTAL_PASSWORD。" +
+                                "当前 portalUser=${portalUser ?: '<空>'}")
             }
 
             def zipFile = bundleTask.get().archiveFile.get().asFile
@@ -488,12 +622,12 @@ def configurePortalUploadTasks(sub, getSecret) {
                     : connection.errorStream?.text
             if (!(code in 200..299)) {
                 throw new GradleException(
-                    "Portal 上传失败 (HTTP ${code}): ${body}\n" +
-                    "multipart body 文件: ${bodyFile.absolutePath}\n" +
-                    "可用 curl 测试: curl -X POST " +
-                    "-H \"Authorization: Bearer <base64(user:pass)>\" " +
-                    "-H \"Content-Type: multipart/form-data; boundary=${boundary}\" " +
-                    "--data-binary @\"${bodyFile.absolutePath}\" \"${uploadUrl}\"")
+                        "Portal 上传失败 (HTTP ${code}): ${body}\n" +
+                                "multipart body 文件: ${bodyFile.absolutePath}\n" +
+                                "可用 curl 测试: curl -X POST " +
+                                "-H \"Authorization: Bearer <base64(user:pass)>\" " +
+                                "-H \"Content-Type: multipart/form-data; boundary=${boundary}\" " +
+                                "--data-binary @\"${bodyFile.absolutePath}\" \"${uploadUrl}\"")
             }
             logger.lifecycle("[Portal] 上传成功 (HTTP ${code})，部署已进入自动发布队列。")
             logger.lifecycle("[Portal] 响应: ${body}")
