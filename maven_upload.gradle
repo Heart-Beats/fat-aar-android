@@ -293,6 +293,11 @@ rootProject.subprojects { sub ->
                         } else {
                             artifact(art.toString())
                         }
+                        // 根据文件扩展名确定 packaging 类型
+                        def artFile = art instanceof File ? art : sub.file(art.toString())
+                        def customPackaging = artFile.name.endsWith('.aar') ? 'aar' : 'jar'
+                        // POM 后处理：packaging 修正 + 依赖补充 + 中文修复
+                        fixPomFile(sub, customPackaging, true)
                     } else if (isAndroidLib || isKotlinAndroid) {
                         /* Android Library：发布 release 变体 */
                         def releaseComponent = sub.components.findByName('release')
