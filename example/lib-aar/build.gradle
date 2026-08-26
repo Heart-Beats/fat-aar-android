@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.kezong.fat-aar'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
@@ -29,10 +30,12 @@ android {
     productFlavors {
 
         flavor1 {
+            missingDimensionStrategy 'default2', 'flavor3'
 
         }
 
         flavor2 {
+            missingDimensionStrategy 'default2', 'flavor3'
 
         }
     }
@@ -46,4 +49,6 @@ android.libraryVariants.all { variant ->
 
 dependencies {
     implementation fileTree(dir: 'libs', include: '*.jar')
+    embed project(path: ':lib-aar2', configuration: 'default')
+    compileOnly project(':lib-java')
 }

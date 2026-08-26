@@ -79,8 +79,6 @@ dependencies {
     embed project(path: ':lib-java', configuration: 'default')
     // aar dependency
     embed project(path: ':lib-aar', configuration: 'default')
-    // aar dependency
-    embed project(path: ':lib-aar2', configuration: 'default')
     // local full aar dependency, just build in flavor1
     flavor1Embed project(path: ':lib-aar-local', configuration: 'default')
     // local full aar dependency, just build in debug
