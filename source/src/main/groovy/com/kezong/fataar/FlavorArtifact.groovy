@@ -139,20 +139,29 @@ class FlavorArtifact {
 
         Collection<LibraryVariant> producerVariants = producer.android.libraryVariants
 
-        // 1. Exact variant, including exact flavor and build type.
+        // A. Exact variant names still require exact flavor-dimension compatibility.
         SelectedVariantArtifact selectedArtifact = selectArtifact(producer, producerVariants.find { producerVariant ->
-            consumerVariant.name == producerVariant.name
+            consumerVariant.name == producerVariant.name && exactFlavorsAreCompatible(consumerVariant, producerVariant)
         })
         if (selectedArtifact != null) {
             return selectedArtifact
         }
 
-        // 2. Exact build type, then each declared build-type fallback in order.
         LinkedHashSet<String> buildTypes = new LinkedHashSet<>()
         buildTypes.add(consumerVariant.buildType.name)
         buildTypes.addAll(getMatchingFallbacks(consumerVariant.buildType))
+
+        // B. Prefer exact flavor compatibility across all build-type candidates.
         for (String buildType : buildTypes) {
-            selectedArtifact = selectCompatibleArtifact(producer, producerVariants, consumerVariant, buildType)
+            selectedArtifact = selectCompatibleArtifact(producer, producerVariants, consumerVariant, buildType, true)
+            if (selectedArtifact != null) {
+                return selectedArtifact
+            }
+        }
+
+        // C. Only then consider flavor and missing-dimension fallbacks.
+        for (String buildType : buildTypes) {
+            selectedArtifact = selectCompatibleArtifact(producer, producerVariants, consumerVariant, buildType, false)
             if (selectedArtifact != null) {
                 return selectedArtifact
             }
@@ -163,9 +172,12 @@ class FlavorArtifact {
     private static SelectedVariantArtifact selectCompatibleArtifact(Project producer,
                                                                      Collection<LibraryVariant> producerVariants,
                                                                      LibraryVariant consumerVariant,
-                                                                     String buildType) {
+                                                                     String buildType,
+                                                                     boolean exactFlavorsOnly) {
         Collection<LibraryVariant> compatibleVariants = producerVariants.findAll { producerVariant ->
-            producerVariant.buildType.name == buildType && flavorsAreCompatible(consumerVariant, producerVariant)
+            producerVariant.buildType.name == buildType &&
+                    (exactFlavorsOnly ? exactFlavorsAreCompatible(consumerVariant, producerVariant) :
+                            fallbackFlavorsAreCompatible(consumerVariant, producerVariant))
         }
         for (LibraryVariant producerVariant : compatibleVariants.sort { left, right ->
             flavorPreference(consumerVariant, left) <=> flavorPreference(consumerVariant, right)
@@ -179,8 +191,8 @@ class FlavorArtifact {
     }
 
     private static List<Integer> flavorPreference(LibraryVariant consumerVariant, LibraryVariant producerVariant) {
-        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(consumerVariant.productFlavors)
-        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(producerVariant.productFlavors)
+        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(variantFlavors(consumerVariant))
+        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
         List<Integer> preference = new ArrayList<>()
         producerFlavors.keySet().sort().each { String dimension ->
             ProductFlavor consumerFlavor = consumerFlavors.get(dimension)
@@ -203,9 +215,7 @@ class FlavorArtifact {
     }
 
     private static int missingDimensionFallbackIndex(LibraryVariant consumerVariant, ProductFlavor producerFlavor) {
-        Collection<ProductFlavor> consumerFlavors = new ArrayList<>(consumerVariant.productFlavors)
-        consumerFlavors.add(consumerVariant.mergedFlavor)
-        for (ProductFlavor consumerFlavor : consumerFlavors) {
+        for (ProductFlavor consumerFlavor : strategyFlavors(consumerVariant)) {
             try {
                 def strategy = consumerFlavor.missingDimensionStrategies.get(producerFlavor.dimension)
                 if (strategy != null) {
@@ -214,62 +224,92 @@ class FlavorArtifact {
                         return index + 1
                     }
                 }
-            } catch (MissingPropertyException ignore) {
+            } catch (MissingPropertyException | MissingMethodException ignore) {
                 // Older AGP model objects may not expose missingDimensionStrategies.
             }
         }
         return Integer.MAX_VALUE
     }
 
-    private static boolean flavorsAreCompatible(LibraryVariant consumerVariant, LibraryVariant producerVariant) {
-        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(consumerVariant.productFlavors)
-        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(producerVariant.productFlavors)
-        if (producerFlavors.isEmpty()) {
-            return true
-        }
-
-        for (ProductFlavor producerFlavor : producerFlavors.values()) {
-            ProductFlavor consumerFlavor = consumerFlavors.get(producerFlavor.dimension)
-            if (consumerFlavor != null) {
-                if (consumerFlavor.name != producerFlavor.name &&
-                        !getMatchingFallbacks(consumerFlavor).contains(producerFlavor.name)) {
-                    return false
-                }
-            } else if (!matchesMissingDimensionStrategy(consumerVariant, producerFlavor)) {
+    private static boolean exactFlavorsAreCompatible(LibraryVariant consumerVariant, LibraryVariant producerVariant) {
+        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(variantFlavors(consumerVariant))
+        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
+        for (Map.Entry<String, ProductFlavor> consumerEntry : consumerFlavors.entrySet()) {
+            ProductFlavor producerFlavor = producerFlavors.get(consumerEntry.key)
+            if (producerFlavor == null || producerFlavor.name != consumerEntry.value.name) {
                 return false
             }
         }
-        return true
+        return producerExtraDimensionsAreAccepted(consumerVariant, consumerFlavors, producerFlavors)
+    }
+
+    private static boolean fallbackFlavorsAreCompatible(LibraryVariant consumerVariant, LibraryVariant producerVariant) {
+        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(variantFlavors(consumerVariant))
+        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
+        for (Map.Entry<String, ProductFlavor> consumerEntry : consumerFlavors.entrySet()) {
+            ProductFlavor producerFlavor = producerFlavors.get(consumerEntry.key)
+            if (producerFlavor == null || (consumerEntry.value.name != producerFlavor.name &&
+                    !getMatchingFallbacks(consumerEntry.value).contains(producerFlavor.name))) {
+                return false
+            }
+        }
+        return producerExtraDimensionsAreAccepted(consumerVariant, consumerFlavors, producerFlavors)
+    }
+
+    private static boolean producerExtraDimensionsAreAccepted(LibraryVariant consumerVariant,
+                                                               Map<String, ProductFlavor> consumerFlavors,
+                                                               Map<String, ProductFlavor> producerFlavors) {
+        return producerFlavors.every { String dimension, ProductFlavor producerFlavor ->
+            return consumerFlavors.containsKey(dimension) ||
+                    matchesMissingDimensionStrategy(consumerVariant, producerFlavor)
+        }
+    }
+
+    private static Collection<ProductFlavor> variantFlavors(LibraryVariant variant) {
+        Collection<ProductFlavor> flavors = variant.productFlavors ?: Collections.emptyList()
+        if (!flavors.isEmpty()) {
+            return flavors
+        }
+        return variant.mergedFlavor == null ? Collections.emptyList() : [variant.mergedFlavor]
     }
 
     private static Map<String, ProductFlavor> flavorsByDimension(Collection<ProductFlavor> flavors) {
         Map<String, ProductFlavor> byDimension = new LinkedHashMap<>()
         flavors.each { ProductFlavor flavor ->
-            if (flavor.dimension != null) {
+            if (flavor != null && flavor.dimension != null) {
                 byDimension.put(flavor.dimension, flavor)
             }
         }
         return byDimension
     }
 
+    private static Collection<ProductFlavor> strategyFlavors(LibraryVariant variant) {
+        Collection<ProductFlavor> flavors = new ArrayList<>(variantFlavors(variant))
+        if (variant.mergedFlavor != null && !flavors.contains(variant.mergedFlavor)) {
+            flavors.add(variant.mergedFlavor)
+        }
+        return flavors
+    }
+
     private static boolean matchesMissingDimensionStrategy(LibraryVariant consumerVariant, ProductFlavor producerFlavor) {
-        Collection<ProductFlavor> consumerFlavors = new ArrayList<>(consumerVariant.productFlavors)
-        consumerFlavors.add(consumerVariant.mergedFlavor)
-        return consumerFlavors.any { ProductFlavor consumerFlavor ->
+        return strategyFlavors(consumerVariant).any { ProductFlavor consumerFlavor ->
             try {
                 def strategy = consumerFlavor.missingDimensionStrategies.get(producerFlavor.dimension)
                 return strategy != null && strategy.fallbacks.contains(producerFlavor.name)
-            } catch (MissingPropertyException ignore) {
+            } catch (MissingPropertyException | MissingMethodException ignore) {
                 return false
             }
         }
     }
 
     private static List<String> getMatchingFallbacks(Object flavorOrBuildType) {
+        if (flavorOrBuildType == null) {
+            return Collections.emptyList()
+        }
         try {
             def fallbacks = flavorOrBuildType.getMatchingFallbacks()
             return fallbacks == null ? Collections.emptyList() : fallbacks.collect { it.toString() }
-        } catch (MissingMethodException ignore) {
+        } catch (MissingMethodException | MissingPropertyException ignore) {
             return Collections.emptyList()
         }
     }
