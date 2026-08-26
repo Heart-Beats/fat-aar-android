@@ -5,6 +5,7 @@ import com.android.builder.model.ProductFlavor
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.UnknownTaskException
 import org.gradle.api.artifacts.ModuleVersionIdentifier
 import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.artifacts.ResolvedDependency
@@ -164,8 +165,9 @@ class FlavorArtifact {
 
         // 3. find missingStrategies
         ProductFlavor flavor = consumerVariant.productFlavors.isEmpty() ? consumerVariant.mergedFlavor : consumerVariant.productFlavors.first()
+        def missingStrategyVariant
         try {
-            def missingStrategyVariant = producerVariants.find { producerVariant ->
+            missingStrategyVariant = producerVariants.find { producerVariant ->
                 ProductFlavor producerFlavor = producerVariant.productFlavors.isEmpty() ?
                         producerVariant.mergedFlavor : producerVariant.productFlavors.first()
                 flavor.missingDimensionStrategies.find { entry ->
@@ -176,21 +178,27 @@ class FlavorArtifact {
                             && consumerVariant.buildType.name == producerVariant.buildType.name
                 }
             }
-            return selectArtifact(producer, missingStrategyVariant)
         } catch (Exception ignore) {
             return null
         }
+        return selectArtifact(producer, missingStrategyVariant)
     }
 
     private static SelectedVariantArtifact selectArtifact(Project producer, LibraryVariant variant) {
         if (variant == null) {
             return null
         }
+        TaskProvider bundleTask
         try {
-            TaskProvider bundleTask = VersionAdapter.getBundleTaskProvider(producer, variant.name as String)
-            return new SelectedVariantArtifact(producer, variant, bundleTask, createArtifactFile(producer, bundleTask.get()))
-        } catch (Exception ignore) {
+            bundleTask = VersionAdapter.getBundleTaskProvider(producer, variant.name as String)
+        } catch (UnknownTaskException ignore) {
             return null
+        }
+        try {
+            File outputFile = createArtifactFile(producer, bundleTask.get())
+            return new SelectedVariantArtifact(producer, variant, bundleTask, outputFile)
+        } catch (Exception exception) {
+            throw new GradleException("Can not resolve bundle output for project '$producer.path', variant '$variant.name', task '$bundleTask.name'", exception)
         }
     }
 
