@@ -226,12 +226,29 @@ class FatAarPlugin implements Plugin<Project> {
             }
 
             if (!match) {
-                def flavorArtifact = FlavorArtifact.createFlavorArtifact(project, variant, dependency)
+                Project producer = findEmbeddedProject(configuration, dependency)
+                def flavorArtifact = FlavorArtifact.createFlavorArtifact(project, producer, variant, dependency)
                 if (flavorArtifact != null) {
                     artifactList.add(flavorArtifact)
                 }
             }
         }
         return artifactList
+    }
+
+    private static Project findEmbeddedProject(Configuration configuration, ResolvedDependency resolvedDependency) {
+        Collection<ProjectDependency> candidates = configuration.dependencies.findAll { dependency ->
+            dependency instanceof ProjectDependency && dependency.name == resolvedDependency.moduleName
+        }
+        if (candidates.isEmpty()) {
+            return null
+        }
+        if (candidates.size() > 1) {
+            String projectPaths = candidates.collect { it.dependencyProject.path }.join(', ')
+            throw new ProjectConfigurationException("Cannot select embedded project for resolved dependency " +
+                    "'${resolvedDependency.moduleName}': declared project dependencies ${projectPaths} have the same module name.",
+                    Collections.emptyList())
+        }
+        return candidates.first().dependencyProject
     }
 }
