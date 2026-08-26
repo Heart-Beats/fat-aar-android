@@ -71,6 +71,10 @@ class VariantProcessor {
         processArtifacts(artifacts, prepareTask, bundleTask)
         processClassesAndJars(bundleTask)
         if (mAndroidArchiveLibraries.isEmpty()) {
+            TaskProvider reBundleTask = configureReBundleAarTask(bundleTask)
+            bundleTask.configure {
+                finalizedBy(reBundleTask)
+            }
             return
         }
         processManifest()
