@@ -376,13 +376,16 @@ class VariantProcessor {
         if (syntheticSelection != null) {
             return syntheticSelection.project
         }
+
+        def componentIdentifier
         try {
-            def componentIdentifier = artifact.id.componentIdentifier
-            if (componentIdentifier instanceof ProjectComponentIdentifier) {
-                return mEmbedProjectsMap.get(componentIdentifier.projectPath)
-            }
-        } catch (Exception ignore) {
-            // Synthetic FlavorArtifact instances have no component identifier.
+            componentIdentifier = artifact.id.componentIdentifier
+        } catch (Exception exception) {
+            throw new GradleException("Cannot determine the component identity for embedded artifact " +
+                    "'${artifact.file.absolutePath}' in project '${mProject.path}'.", exception)
+        }
+        if (componentIdentifier instanceof ProjectComponentIdentifier) {
+            return mEmbedProjectsMap.get(componentIdentifier.projectPath)
         }
         return null
     }
@@ -394,15 +397,31 @@ class VariantProcessor {
             return null
         }
 
-        String artifactPath = normalizedPath(syntheticSelection == null ? artifact.file : syntheticSelection.outputFile)
-        String selectedVariant = syntheticSelection == null ? null : syntheticSelection.variant.name
-        return mNestedEmbedNodes.find { NestedEmbedNode node ->
+        Collection<NestedEmbedNode> candidates = mNestedEmbedNodes.findAll { NestedEmbedNode node ->
             return node.parentProject.path == mProject.path &&
                     node.childProject.path == artifactProject.path &&
                     node.requestedVariant == mVariant.name &&
-                    (selectedVariant == null || node.selection.variant.name == selectedVariant) &&
-                    normalizedPath(node.selection.outputFile) == artifactPath
+                    (syntheticSelection == null || node.selection.variant.name == syntheticSelection.variant.name)
         }
+        return selectNestedNode(artifact, artifactProject, syntheticSelection, candidates)
+    }
+
+    private NestedEmbedNode selectNestedNode(ResolvedArtifact artifact,
+                                             Project artifactProject,
+                                             SelectedVariantArtifact syntheticSelection,
+                                             Collection<NestedEmbedNode> candidates) {
+        if (candidates.isEmpty()) {
+            return null
+        }
+        if (candidates.size() == 1) {
+            return candidates.first()
+        }
+
+        String selectedVariant = syntheticSelection == null ? '<resolved by Gradle>' : syntheticSelection.variant.name
+        String nodeVariants = candidates.collect { it.selection.variant.name }.unique().join(', ')
+        throw new GradleException("Ambiguous nested embed node for parent '${mProject.path}', child " +
+                "'${artifactProject.path}', requested variant '${mVariant.name}', selected variant " +
+                "'${selectedVariant}', artifact '${artifact.file.absolutePath}'. Candidate selected variants: ${nodeVariants}.")
     }
 
     private static String normalizedPath(File file) {
