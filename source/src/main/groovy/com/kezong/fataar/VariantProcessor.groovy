@@ -198,6 +198,9 @@ class VariantProcessor {
             }
         }
 
+        task.configure {
+            dependsOn(bundleTask)
+        }
         return task
     }
 
