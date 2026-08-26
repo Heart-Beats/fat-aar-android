@@ -5,6 +5,7 @@ import com.android.build.gradle.internal.api.DefaultAndroidSourceSet
 import com.android.build.gradle.tasks.ManifestProcessorTask
 import com.kezong.fataar.tasks.MergeDataBindingMetadataTask
 import com.kezong.fataar.tasks.MergeEmbedServicesAndKotlinTask
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.ResolvedArtifact
@@ -43,11 +44,17 @@ class VariantProcessor {
 
     private Map<String, Project> mEmbedProjectsMap
 
-    VariantProcessor(Project project, LibraryVariant variant, Map<String, Project> embedProjectsMap) {
+    private Collection<NestedEmbedNode> mNestedEmbedNodes
+
+    VariantProcessor(Project project,
+                     LibraryVariant variant,
+                     Map<String, Project> embedProjectsMap,
+                     Collection<NestedEmbedNode> nestedEmbedNodes = Collections.emptyList()) {
         mProject = project
         mVariant = variant
         mVersionAdapter = new VersionAdapter(project, variant)
-        mEmbedProjectsMap = embedProjectsMap ?: new HashMap<>()
+        mEmbedProjectsMap = embedProjectsMap ?: Collections.emptyMap()
+        mNestedEmbedNodes = nestedEmbedNodes ?: Collections.emptyList()
     }
 
     void addAndroidArchiveLibrary(AndroidArchiveLibrary library) {
@@ -356,6 +363,87 @@ class VariantProcessor {
         }
     }
 
+    private Project findEmbeddedProject(ResolvedArtifact artifact) {
+        try {
+            def componentIdentifier = artifact.id.componentIdentifier
+            if (componentIdentifier instanceof ProjectComponentIdentifier) {
+                return mEmbedProjectsMap.get(componentIdentifier.projectPath)
+            }
+        } catch (Exception ignore) {
+            // Synthetic FlavorArtifact instances have no component identifier.
+        }
+
+        String artifactPath = normalizedPath(artifact.file)
+        return mEmbedProjectsMap.values().find { Project candidate ->
+            if (!candidate.plugins.hasPlugin('com.android.library')) {
+                return false
+            }
+            SelectedVariantArtifact selection = FlavorArtifact.selectVariantArtifact(candidate, mVariant)
+            return selection != null && normalizedPath(selection.outputFile) == artifactPath
+        }
+    }
+
+    private NestedEmbedNode findNestedNode(ResolvedArtifact artifact) {
+        Project artifactProject = findEmbeddedProject(artifact)
+        if (artifactProject == null) {
+            return null
+        }
+
+        String artifactPath = normalizedPath(artifact.file)
+        return mNestedEmbedNodes.find { NestedEmbedNode node ->
+            return node.parentProject.path == mProject.path &&
+                    node.childProject.path == artifactProject.path &&
+                    node.requestedVariant == mVariant.name &&
+                    normalizedPath(node.selection.outputFile) == artifactPath
+        }
+    }
+
+    private static String normalizedPath(File file) {
+        return file.absoluteFile.toPath().normalize().toString()
+    }
+
+    private static Set<Task> getTaskDependencies(ResolvedArtifact artifact) {
+        def taskDependency = getTaskDependency(artifact)
+        Set<Task> dependencies = new LinkedHashSet<>()
+        if (taskDependency instanceof TaskDependency) {
+            dependencies.addAll(taskDependency.getDependencies(null))
+            return dependencies
+        }
+
+        CachingTaskDependencyResolveContext context = new CachingTaskDependencyResolveContext()
+        taskDependency.visitDependencies(context)
+        context.queue.each { dependency ->
+            dependencies.addAll(dependency.getDependencies(null))
+        }
+        return dependencies
+    }
+
+    private void verifyNestedAarOutput(NestedEmbedNode node) {
+        File output = node.selection.outputFile
+        String details = "parent '${mProject.path}', child '${node.childProject.path}', " +
+                "requested variant '${node.requestedVariant}', selected variant '${node.selection.variant.name}', " +
+                "task '${node.reBundleTask.name}', expected output '${output.absolutePath}'"
+        if (!output.isFile() || !output.canRead()) {
+            throw new GradleException("Nested fat AAR output is not readable: ${details}")
+        }
+
+        java.util.zip.ZipFile aar = null
+        try {
+            aar = new java.util.zip.ZipFile(output)
+            if (aar.getEntry('AndroidManifest.xml') == null) {
+                throw new GradleException("Nested fat AAR output is invalid (missing AndroidManifest.xml): ${details}")
+            }
+        } catch (GradleException exception) {
+            throw exception
+        } catch (Exception exception) {
+            throw new GradleException("Nested fat AAR output is not a readable AAR: ${details}", exception)
+        } finally {
+            if (aar != null) {
+                aar.close()
+            }
+        }
+    }
+
 
     /**
      * exploded artifact files
@@ -369,57 +457,40 @@ class VariantProcessor {
                 addJarFile(artifact.file)
             } else if (FatAarPlugin.ARTIFACT_TYPE_AAR == artifact.type) {
                 AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(mProject, artifact, mVariant.name)
-                // Primary: lookup from ProjectDependency map (using module name)
-                Project embedProj = mEmbedProjectsMap.get(artifact.moduleVersion.id.name)
-                if (embedProj == null) {
-                    // Fallback: try ProjectComponentIdentifier
-                    try {
-                        def compId = artifact.id.componentIdentifier
-                        if (compId instanceof ProjectComponentIdentifier) {
-                            def projectPath = compId.projectPath
-                            embedProj = mProject.rootProject.allprojects.find { it.path == projectPath }
-                        }
-                    } catch (Exception ignore) {}
-                }
+                Project embedProj = findEmbeddedProject(artifact)
                 if (embedProj != null && embedProj != mProject) {
                     archiveLibrary.setEmbedProject(embedProj)
-//                    FatUtils.logAnytime("[embed] ${artifact.moduleVersion.id.name} → local project '${embedProj.path}'")
-                } else {
-//                    FatUtils.logAnytime("[embed] ${artifact.moduleVersion.id.name} → remote Maven artifact")
                 }
                 addAndroidArchiveLibrary(archiveLibrary)
-                Set<Task> dependencies
-
-                if (getTaskDependency(artifact) instanceof TaskDependency) {
-                    dependencies = artifact.buildDependencies.getDependencies()
-                } else {
-                    CachingTaskDependencyResolveContext context = new CachingTaskDependencyResolveContext()
-                    getTaskDependency(artifact).visitDependencies(context)
-                    if (context.queue.size() == 0) {
-                        dependencies = new HashSet<>()
-                    } else {
-                        dependencies = context.queue.getFirst().getDependencies()
-                    }
-                }
+                NestedEmbedNode nestedNode = findNestedNode(artifact)
                 final def zipFolder = archiveLibrary.getRootFolder()
                 zipFolder.mkdirs()
                 def group = artifact.getModuleVersion().id.group.capitalize()
                 def name = artifact.name.capitalize()
                 String taskName = "explode${group}${name}${mVariant.name.capitalize()}"
                 Task explodeTask = mProject.tasks.create(taskName, Copy) {
-                    from mProject.zipTree(artifact.file.absolutePath)
+                    File inputAar = nestedNode == null ? artifact.file : nestedNode.selection.outputFile
+                    from mProject.zipTree(inputAar.absolutePath)
                     into zipFolder
 
                     doFirst {
                         // Delete previously extracted data.
                         zipFolder.deleteDir()
+                        if (nestedNode != null) {
+                            verifyNestedAarOutput(nestedNode)
+                        }
                     }
                 }
 
-                if (dependencies.size() == 0) {
-                    explodeTask.dependsOn(prepareTask)
+                if (nestedNode != null) {
+                    explodeTask.dependsOn(nestedNode.reBundleTask)
                 } else {
-                    explodeTask.dependsOn(dependencies.first())
+                    Set<Task> dependencies = getTaskDependencies(artifact)
+                    if (dependencies.isEmpty()) {
+                        explodeTask.dependsOn(prepareTask)
+                    } else {
+                        explodeTask.dependsOn(dependencies)
+                    }
                 }
                 Task javacTask = mVersionAdapter.getJavaCompileTask()
                 javacTask.dependsOn(explodeTask)

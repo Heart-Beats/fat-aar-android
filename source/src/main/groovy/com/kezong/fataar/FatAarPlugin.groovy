@@ -85,15 +85,15 @@ class FatAarPlugin implements Plugin<Project> {
                 configuration.dependencies.each { dep ->
                     if (dep instanceof ProjectDependency) {
                         Project p = dep.dependencyProject
-                        embedProjectsMap.put(dep.name, p)
-                        embedProjectsMap.put(p.name, p)
                         embedProjectsMap.put(p.path, p)
                     }
                 }
             }
 
             if (!artifacts.isEmpty()) {
-                def processor = new VariantProcessor(project, variant, embedProjectsMap)
+                Collection<NestedEmbedNode> nestedEmbedNodes =
+                        nestedEmbedNodesByVariant.get(variant.name) ?: Collections.emptyList()
+                def processor = new VariantProcessor(project, variant, embedProjectsMap, nestedEmbedNodes)
                 processor.processVariant(artifacts, firstLevelDependencies, transform)
             }
         }
@@ -132,7 +132,6 @@ class FatAarPlugin implements Plugin<Project> {
 
             // Process every embedded child first so its reBundle task exists before validation.
             plugins.each { processPluginAfterDependencies(it, processed, new LinkedHashSet<FatAarPlugin>()) }
-            plugins.each { it.validateNestedEmbedGraphs() }
         }
     }
 
@@ -151,6 +150,7 @@ class FatAarPlugin implements Plugin<Project> {
             }
         }
         active.remove(plugin)
+        plugin.validateNestedEmbedGraphs()
         plugin.doAfterEvaluate()
         processed.add(plugin)
     }
