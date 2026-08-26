@@ -35,15 +35,9 @@ class FlavorArtifact {
     private static final String CLASS_DefaultResolvedArtifact = "org.gradle.api.internal.artifacts.DefaultResolvedArtifact"
 
     static ResolvedArtifact createFlavorArtifact(Project consumer,
-                                                 Project producer,
-                                                 LibraryVariant variant,
+                                                 SelectedVariantArtifact selectedArtifact,
                                                  ResolvedDependency unResolvedArtifact) {
-        if (producer == null) {
-            return null
-        }
-        SelectedVariantArtifact selectedArtifact = selectVariantArtifact(producer, variant)
         if (selectedArtifact == null) {
-            FatUtils.logError("[$variant.name]Can not resolve :$unResolvedArtifact.moduleName")
             return null
         }
 
@@ -236,7 +230,7 @@ class FlavorArtifact {
         Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
         for (Map.Entry<String, ProductFlavor> consumerEntry : consumerFlavors.entrySet()) {
             ProductFlavor producerFlavor = producerFlavors.get(consumerEntry.key)
-            if (producerFlavor == null || producerFlavor.name != consumerEntry.value.name) {
+            if (producerFlavor != null && producerFlavor.name != consumerEntry.value.name) {
                 return false
             }
         }
@@ -248,8 +242,8 @@ class FlavorArtifact {
         Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
         for (Map.Entry<String, ProductFlavor> consumerEntry : consumerFlavors.entrySet()) {
             ProductFlavor producerFlavor = producerFlavors.get(consumerEntry.key)
-            if (producerFlavor == null || (consumerEntry.value.name != producerFlavor.name &&
-                    !getMatchingFallbacks(consumerEntry.value).contains(producerFlavor.name))) {
+            if (producerFlavor != null && consumerEntry.value.name != producerFlavor.name &&
+                    !getMatchingFallbacks(consumerEntry.value).contains(producerFlavor.name)) {
                 return false
             }
         }

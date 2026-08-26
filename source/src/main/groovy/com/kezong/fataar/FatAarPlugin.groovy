@@ -71,11 +71,13 @@ class FatAarPlugin implements Plugin<Project> {
 
         project.android.libraryVariants.all { variant ->
             Collection<ResolvedArtifact> artifacts = new ArrayList()
+            Map<String, SelectedVariantArtifact> syntheticArtifactSelections = new LinkedHashMap<>()
             Collection<ResolvedDependency> firstLevelDependencies = new ArrayList<>()
             getApplicableEmbedConfigurations(project, variant as LibraryVariant).each { configuration ->
                 Collection<ResolvedArtifact> resolvedArtifacts = resolveArtifacts(configuration)
                 artifacts.addAll(resolvedArtifacts)
-                artifacts.addAll(dealUnResolveArtifacts(configuration, variant as LibraryVariant, resolvedArtifacts))
+                artifacts.addAll(dealUnResolveArtifacts(configuration, variant as LibraryVariant,
+                        resolvedArtifacts, syntheticArtifactSelections))
                 firstLevelDependencies.addAll(configuration.resolvedConfiguration.firstLevelModuleDependencies)
             }
 
@@ -93,7 +95,8 @@ class FatAarPlugin implements Plugin<Project> {
             if (!artifacts.isEmpty()) {
                 Collection<NestedEmbedNode> nestedEmbedNodes =
                         nestedEmbedNodesByVariant.get(variant.name) ?: Collections.emptyList()
-                def processor = new VariantProcessor(project, variant, embedProjectsMap, nestedEmbedNodes)
+                def processor = new VariantProcessor(project, variant, embedProjectsMap, nestedEmbedNodes,
+                        syntheticArtifactSelections)
                 processor.processVariant(artifacts, firstLevelDependencies, transform)
             }
         }
@@ -218,7 +221,10 @@ class FatAarPlugin implements Plugin<Project> {
         return set
     }
 
-    private Collection<ResolvedArtifact> dealUnResolveArtifacts(Configuration configuration, LibraryVariant variant, Collection<ResolvedArtifact> artifacts) {
+    private Collection<ResolvedArtifact> dealUnResolveArtifacts(Configuration configuration,
+                                                                LibraryVariant variant,
+                                                                Collection<ResolvedArtifact> artifacts,
+                                                                Map<String, SelectedVariantArtifact> syntheticArtifactSelections) {
         def artifactList = new ArrayList()
         configuration.resolvedConfiguration.firstLevelModuleDependencies.each { dependency ->
             def match = artifacts.any { artifact ->
@@ -227,13 +233,22 @@ class FatAarPlugin implements Plugin<Project> {
 
             if (!match) {
                 Project producer = findEmbeddedProject(configuration, dependency)
-                def flavorArtifact = FlavorArtifact.createFlavorArtifact(project, producer, variant, dependency)
+                SelectedVariantArtifact selectedArtifact = FlavorArtifact.selectVariantArtifact(producer, variant)
+                if (selectedArtifact == null && producer != null) {
+                    FatUtils.logError("[$variant.name]Can not resolve :$dependency.moduleName")
+                }
+                def flavorArtifact = FlavorArtifact.createFlavorArtifact(project, selectedArtifact, dependency)
                 if (flavorArtifact != null) {
+                    syntheticArtifactSelections.put(normalizedPath(selectedArtifact.outputFile), selectedArtifact)
                     artifactList.add(flavorArtifact)
                 }
             }
         }
         return artifactList
+    }
+
+    private static String normalizedPath(File file) {
+        return file.absoluteFile.toPath().normalize().toString()
     }
 
     private static Project findEmbeddedProject(Configuration configuration, ResolvedDependency resolvedDependency) {

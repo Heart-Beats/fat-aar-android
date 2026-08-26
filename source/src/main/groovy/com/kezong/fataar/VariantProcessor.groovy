@@ -46,15 +46,19 @@ class VariantProcessor {
 
     private Collection<NestedEmbedNode> mNestedEmbedNodes
 
+    private Map<String, SelectedVariantArtifact> mSyntheticArtifactSelections
+
     VariantProcessor(Project project,
                      LibraryVariant variant,
                      Map<String, Project> embedProjectsMap,
-                     Collection<NestedEmbedNode> nestedEmbedNodes = Collections.emptyList()) {
+                     Collection<NestedEmbedNode> nestedEmbedNodes = Collections.emptyList(),
+                     Map<String, SelectedVariantArtifact> syntheticArtifactSelections = Collections.emptyMap()) {
         mProject = project
         mVariant = variant
         mVersionAdapter = new VersionAdapter(project, variant)
         mEmbedProjectsMap = embedProjectsMap ?: Collections.emptyMap()
         mNestedEmbedNodes = nestedEmbedNodes ?: Collections.emptyList()
+        mSyntheticArtifactSelections = syntheticArtifactSelections ?: Collections.emptyMap()
     }
 
     void addAndroidArchiveLibrary(AndroidArchiveLibrary library) {
@@ -363,7 +367,15 @@ class VariantProcessor {
         }
     }
 
+    private SelectedVariantArtifact findSyntheticArtifactSelection(ResolvedArtifact artifact) {
+        return mSyntheticArtifactSelections.get(normalizedPath(artifact.file))
+    }
+
     private Project findEmbeddedProject(ResolvedArtifact artifact) {
+        SelectedVariantArtifact syntheticSelection = findSyntheticArtifactSelection(artifact)
+        if (syntheticSelection != null) {
+            return syntheticSelection.project
+        }
         try {
             def componentIdentifier = artifact.id.componentIdentifier
             if (componentIdentifier instanceof ProjectComponentIdentifier) {
@@ -372,28 +384,23 @@ class VariantProcessor {
         } catch (Exception ignore) {
             // Synthetic FlavorArtifact instances have no component identifier.
         }
-
-        String artifactPath = normalizedPath(artifact.file)
-        return mEmbedProjectsMap.values().find { Project candidate ->
-            if (!candidate.plugins.hasPlugin('com.android.library')) {
-                return false
-            }
-            SelectedVariantArtifact selection = FlavorArtifact.selectVariantArtifact(candidate, mVariant)
-            return selection != null && normalizedPath(selection.outputFile) == artifactPath
-        }
+        return null
     }
 
     private NestedEmbedNode findNestedNode(ResolvedArtifact artifact) {
-        Project artifactProject = findEmbeddedProject(artifact)
+        SelectedVariantArtifact syntheticSelection = findSyntheticArtifactSelection(artifact)
+        Project artifactProject = syntheticSelection == null ? findEmbeddedProject(artifact) : syntheticSelection.project
         if (artifactProject == null) {
             return null
         }
 
-        String artifactPath = normalizedPath(artifact.file)
+        String artifactPath = normalizedPath(syntheticSelection == null ? artifact.file : syntheticSelection.outputFile)
+        String selectedVariant = syntheticSelection == null ? null : syntheticSelection.variant.name
         return mNestedEmbedNodes.find { NestedEmbedNode node ->
             return node.parentProject.path == mProject.path &&
                     node.childProject.path == artifactProject.path &&
                     node.requestedVariant == mVariant.name &&
+                    (selectedVariant == null || node.selection.variant.name == selectedVariant) &&
                     normalizedPath(node.selection.outputFile) == artifactPath
         }
     }
