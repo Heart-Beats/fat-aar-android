@@ -18,19 +18,26 @@ if [ ! -d "$PREBUILT_ROOT" ]; then
 fi
 
 TOOLCHAIN=""
+COMPILER=""
 for candidate in "$PREBUILT_ROOT"/*; do
-    compiler="$candidate/bin/armv7a-linux-androideabi16-clang"
-    if [ -x "$compiler" ]; then
-        if [ -n "$TOOLCHAIN" ]; then
-            printf '%s\n' 'Multiple NDK host toolchains contain armv7a-linux-androideabi16-clang.' >&2
-            exit 1
-        fi
-        TOOLCHAIN="$candidate"
+    if [ -x "$candidate/bin/clang" ]; then
+        compiler="$candidate/bin/clang"
+    elif [ -x "$candidate/bin/clang.exe" ]; then
+        compiler="$candidate/bin/clang.exe"
+    else
+        continue
     fi
+
+    if [ -n "$TOOLCHAIN" ]; then
+        printf '%s\n' 'Multiple NDK host toolchains contain clang.' >&2
+        exit 1
+    fi
+    TOOLCHAIN="$candidate"
+    COMPILER="$compiler"
 done
 
 if [ -z "$TOOLCHAIN" ]; then
-    printf 'No NDK host toolchain contains armv7a-linux-androideabi16-clang under: %s\n' "$PREBUILT_ROOT" >&2
+    printf 'No NDK host toolchain contains clang under: %s\n' "$PREBUILT_ROOT" >&2
     exit 1
 fi
 
@@ -39,7 +46,7 @@ SOURCE="$SCRIPT_DIR/nested_embed_marker.c"
 OUTPUT="$SCRIPT_DIR/../jniLibs/armeabi-v7a/libnested_embed_marker.so"
 
 mkdir -p "$(dirname -- "$OUTPUT")"
-"$TOOLCHAIN/bin/armv7a-linux-androideabi16-clang" -shared -fPIC -O2 -Wl,--build-id=none -o "$OUTPUT" "$SOURCE"
+"$COMPILER" --target=armv7a-linux-androideabi16 -shared -fPIC -O2 -Wl,--build-id=none -o "$OUTPUT" "$SOURCE"
 
 if [ ! -s "$OUTPUT" ]; then
     printf 'Compiler did not produce a non-empty output: %s\n' "$OUTPUT" >&2
