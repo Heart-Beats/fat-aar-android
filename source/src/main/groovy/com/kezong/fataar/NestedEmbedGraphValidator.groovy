@@ -68,8 +68,17 @@ class NestedEmbedGraphValidator {
                             "应用 com.kezong.fat-aar 或改用 implementation/api。")
                 }
 
-                registerPath(parentKey, childKey, activePath)
                 TaskProvider reBundleTask = findReBundleTask(child, selection.variant)
+                if (reBundleTask == null) {
+                    String names = childConfigurations.collect { it.name }.join(', ')
+                    String expectedTask = "reBundleAar${selection.variant.name.capitalize()}"
+                    throw configurationException("Nested fat AAR cannot produce a final AAR: parent '${parent.path}', " +
+                            "child '${child.path}', requested variant '${requestedVariant.name}', " +
+                            "selected variant '${selection.variant.name}', configurations '${names}', " +
+                            "expected task '${expectedTask}'. Ensure the child module's nested AAR build produces " +
+                            "a final AAR; do not downgrade it to a thin AAR.")
+                }
+                registerPath(parentKey, childKey, activePath)
                 nodes.add(new NestedEmbedNode(parent, child, requestedVariant.name, selection, reBundleTask))
 
                 if (completed.add(childKey)) {
