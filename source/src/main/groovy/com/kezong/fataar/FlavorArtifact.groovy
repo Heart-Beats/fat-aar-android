@@ -2,6 +2,7 @@ package com.kezong.fataar
 
 import com.android.build.gradle.api.LibraryVariant
 import com.android.builder.model.ProductFlavor
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.ModuleVersionIdentifier
@@ -34,20 +35,15 @@ class FlavorArtifact {
 
     static ResolvedArtifact createFlavorArtifact(Project project, LibraryVariant variant, ResolvedDependency unResolvedArtifact) {
         Project artifactProject = getArtifactProject(project, unResolvedArtifact)
-        TaskProvider bundleProvider = null;
-        try {
-            bundleProvider = getBundleTask(artifactProject, variant)
-        } catch (Exception ignore) {
+        SelectedVariantArtifact selectedArtifact = selectVariantArtifact(artifactProject, variant)
+        if (selectedArtifact == null) {
             FatUtils.logError("[$variant.name]Can not resolve :$unResolvedArtifact.moduleName")
             return null
         }
 
-        if (bundleProvider == null) {
-            return null
-        }
-
         ModuleVersionIdentifier identifier = createModuleVersionIdentifier(unResolvedArtifact)
-        File artifactFile = createArtifactFile(artifactProject, bundleProvider.get())
+        TaskProvider bundleProvider = selectedArtifact.bundleTask
+        File artifactFile = selectedArtifact.outputFile
         DefaultIvyArtifactName artifactName = createArtifactName(artifactFile)
         Factory<File> fileFactory = new Factory<File>() {
             @Override
@@ -121,12 +117,14 @@ class FlavorArtifact {
     }
 
     private static Project getArtifactProject(Project project, ResolvedDependency unResolvedArtifact) {
-        for (Project p : project.getRootProject().getAllprojects()) {
-            if (unResolvedArtifact.moduleName == p.name) {
-                return p
-            }
+        def matchedProjects = project.getRootProject().getAllprojects().findAll { p ->
+            unResolvedArtifact.moduleName == p.name
         }
-        return null
+        if (matchedProjects.size() > 1) {
+            def projectPaths = matchedProjects.collect { p -> p.path }.join(", ")
+            throw new GradleException("Can not resolve embedded project '$unResolvedArtifact.moduleName': multiple projects have this name: $projectPaths")
+        }
+        return matchedProjects.isEmpty() ? null : matchedProjects.first()
     }
 
     private static File createArtifactFile(Project project, Task bundle) {
@@ -139,53 +137,61 @@ class FlavorArtifact {
         return output
     }
 
-    private static TaskProvider getBundleTask(Project project, LibraryVariant variant) {
-        TaskProvider bundleTaskProvider = null
-        project.android.libraryVariants.find { subVariant ->
-            // 1. find same flavor
-            if (variant.name == subVariant.name) {
-                try {
-                    bundleTaskProvider = VersionAdapter.getBundleTaskProvider(project, subVariant.name as String)
-                    return true
-                } catch (Exception ignore) {
-                }
-            }
+    public static SelectedVariantArtifact selectVariantArtifact(Project producer, LibraryVariant consumerVariant) {
+        if (producer == null) {
+            return null
+        }
 
-            // 2. find buildType
-            ProductFlavor flavor = variant.productFlavors.isEmpty() ? variant.mergedFlavor : variant.productFlavors.first()
-            if (subVariant.name == variant.buildType.name) {
-                try {
-                    bundleTaskProvider = VersionAdapter.getBundleTaskProvider(project, subVariant.name as String)
-                    return true
-                } catch (Exception ignore) {
-                }
-            }
+        def producerVariants = producer.android.libraryVariants
 
-            // 3. find missingStrategies
-            try {
+        // 1. find same flavor
+        def sameFlavorVariant = producerVariants.find { producerVariant ->
+            consumerVariant.name == producerVariant.name
+        }
+        SelectedVariantArtifact selectedArtifact = selectArtifact(producer, sameFlavorVariant)
+        if (selectedArtifact != null) {
+            return selectedArtifact
+        }
+
+        // 2. find buildType
+        def buildTypeVariant = producerVariants.find { producerVariant ->
+            producerVariant.name == consumerVariant.buildType.name
+        }
+        selectedArtifact = selectArtifact(producer, buildTypeVariant)
+        if (selectedArtifact != null) {
+            return selectedArtifact
+        }
+
+        // 3. find missingStrategies
+        ProductFlavor flavor = consumerVariant.productFlavors.isEmpty() ? consumerVariant.mergedFlavor : consumerVariant.productFlavors.first()
+        try {
+            def missingStrategyVariant = producerVariants.find { producerVariant ->
+                ProductFlavor producerFlavor = producerVariant.productFlavors.isEmpty() ?
+                        producerVariant.mergedFlavor : producerVariant.productFlavors.first()
                 flavor.missingDimensionStrategies.find { entry ->
                     String toDimension = entry.getKey()
                     String toFlavor = entry.getValue().getFallbacks().first()
-                    ProductFlavor subFlavor = subVariant.productFlavors.isEmpty() ?
-                            subVariant.mergedFlavor : subVariant.productFlavors.first()
-                    if (toDimension == subFlavor.dimension
-                            && toFlavor == subFlavor.name
-                            && variant.buildType.name == subVariant.buildType.name) {
-                        try {
-                            bundleTaskProvider = VersionAdapter.getBundleTaskProvider(project, subVariant.name as String)
-                            return true
-                        } catch (Exception ignore) {
-                        }
-                    }
+                    return toDimension == producerFlavor.dimension
+                            && toFlavor == producerFlavor.name
+                            && consumerVariant.buildType.name == producerVariant.buildType.name
                 }
-            } catch (Exception ignore) {
-
             }
-
-            return bundleTaskProvider != null
+            return selectArtifact(producer, missingStrategyVariant)
+        } catch (Exception ignore) {
+            return null
         }
+    }
 
-        return bundleTaskProvider
+    private static SelectedVariantArtifact selectArtifact(Project producer, LibraryVariant variant) {
+        if (variant == null) {
+            return null
+        }
+        try {
+            TaskProvider bundleTask = VersionAdapter.getBundleTaskProvider(producer, variant.name as String)
+            return new SelectedVariantArtifact(producer, variant, bundleTask, createArtifactFile(producer, bundleTask.get()))
+        } catch (Exception ignore) {
+            return null
+        }
     }
 
     private static TaskDependency createTaskDependency(Task bundleTask) {
