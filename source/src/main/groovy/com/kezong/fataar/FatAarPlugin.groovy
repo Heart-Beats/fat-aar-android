@@ -28,6 +28,8 @@ class FatAarPlugin implements Plugin<Project> {
 
     private final Collection<Configuration> embedConfigurations = new ArrayList<>()
 
+    final Map<String, Collection<NestedEmbedNode>> nestedEmbedNodesByVariant = new LinkedHashMap<>()
+
     @Override
     void apply(Project project) {
         this.project = project
@@ -38,9 +40,7 @@ class FatAarPlugin implements Plugin<Project> {
         createConfigurations()
         registerTransform()
         FatUtils.logAnytime("fat-aar plugin applied to project '${project.path}' (build: ${getBuildDateTime()})")
-        project.afterEvaluate {
-            doAfterEvaluate()
-        }
+        registerProjectsEvaluatedHandler()
     }
 
     private registerTransform() {
@@ -72,32 +72,22 @@ class FatAarPlugin implements Plugin<Project> {
         project.android.libraryVariants.all { variant ->
             Collection<ResolvedArtifact> artifacts = new ArrayList()
             Collection<ResolvedDependency> firstLevelDependencies = new ArrayList<>()
-            embedConfigurations.each { configuration ->
-                if (configuration.name == CONFIG_NAME
-                        || configuration.name == variant.getBuildType().name + CONFIG_SUFFIX
-                        || configuration.name == variant.getFlavorName() + CONFIG_SUFFIX
-                        || configuration.name == variant.name + CONFIG_SUFFIX) {
-                    Collection<ResolvedArtifact> resolvedArtifacts = resolveArtifacts(configuration)
-                    artifacts.addAll(resolvedArtifacts)
-                    artifacts.addAll(dealUnResolveArtifacts(configuration, variant as LibraryVariant, resolvedArtifacts))
-                    firstLevelDependencies.addAll(configuration.resolvedConfiguration.firstLevelModuleDependencies)
-                }
+            getApplicableEmbedConfigurations(project, variant as LibraryVariant).each { configuration ->
+                Collection<ResolvedArtifact> resolvedArtifacts = resolveArtifacts(configuration)
+                artifacts.addAll(resolvedArtifacts)
+                artifacts.addAll(dealUnResolveArtifacts(configuration, variant as LibraryVariant, resolvedArtifacts))
+                firstLevelDependencies.addAll(configuration.resolvedConfiguration.firstLevelModuleDependencies)
             }
 
             // Collect embed project map using ProjectDependency (same as hook script)
             Map<String, Project> embedProjectsMap = new HashMap<>()
-            embedConfigurations.each { configuration ->
-                if (configuration.name == CONFIG_NAME
-                        || configuration.name == variant.getBuildType().name + CONFIG_SUFFIX
-                        || configuration.name == variant.getFlavorName() + CONFIG_SUFFIX
-                        || configuration.name == variant.name + CONFIG_SUFFIX) {
-                    configuration.dependencies.each { dep ->
-                        if (dep instanceof ProjectDependency) {
-                            Project p = dep.dependencyProject
-                            embedProjectsMap.put(dep.name, p)
-                            embedProjectsMap.put(p.name, p)
-                            embedProjectsMap.put(p.path, p)
-                        }
+            getApplicableEmbedConfigurations(project, variant as LibraryVariant).each { configuration ->
+                configuration.dependencies.each { dep ->
+                    if (dep instanceof ProjectDependency) {
+                        Project p = dep.dependencyProject
+                        embedProjectsMap.put(dep.name, p)
+                        embedProjectsMap.put(p.name, p)
+                        embedProjectsMap.put(p.path, p)
                     }
                 }
             }
@@ -106,6 +96,69 @@ class FatAarPlugin implements Plugin<Project> {
                 def processor = new VariantProcessor(project, variant, embedProjectsMap)
                 processor.processVariant(artifacts, firstLevelDependencies, transform)
             }
+        }
+    }
+
+    static Collection<Configuration> getApplicableEmbedConfigurations(Project project, LibraryVariant variant) {
+        LinkedHashSet<Configuration> configurations = new LinkedHashSet<>()
+        [CONFIG_NAME,
+         variant.buildType.name + CONFIG_SUFFIX,
+         variant.flavorName ? variant.flavorName + CONFIG_SUFFIX : null,
+         variant.name + CONFIG_SUFFIX].findAll { it != null }.each { name ->
+            Configuration configuration = project.configurations.findByName(name)
+            if (configuration != null) {
+                configurations.add(configuration)
+            }
+        }
+        return configurations
+    }
+
+    static Collection<Configuration> getNonEmptyApplicableEmbedConfigurations(Project project, LibraryVariant variant) {
+        return getApplicableEmbedConfigurations(project, variant).findAll { !it.dependencies.isEmpty() }
+    }
+
+    private void registerProjectsEvaluatedHandler() {
+        Project root = project.rootProject
+        String handlerKey = FatAarPlugin.name + '.projectsEvaluatedHandlerRegistered'
+        if (root.extensions.extraProperties.has(handlerKey)) {
+            return
+        }
+        root.extensions.extraProperties.set(handlerKey, true)
+        project.gradle.projectsEvaluated {
+            Collection<FatAarPlugin> plugins = root.allprojects.collect { candidate ->
+                candidate.plugins.findPlugin(FatAarPlugin)
+            }.findAll { it != null }
+            Set<FatAarPlugin> processed = new LinkedHashSet<>()
+
+            // Process every embedded child first so its reBundle task exists before validation.
+            plugins.each { processPluginAfterDependencies(it, processed, new LinkedHashSet<FatAarPlugin>()) }
+            plugins.each { it.validateNestedEmbedGraphs() }
+        }
+    }
+
+    private static void processPluginAfterDependencies(FatAarPlugin plugin,
+                                                       Set<FatAarPlugin> processed,
+                                                       Set<FatAarPlugin> active) {
+        if (processed.contains(plugin) || !active.add(plugin)) {
+            return
+        }
+        plugin.embedConfigurations.each { configuration ->
+            configuration.dependencies.findAll { it instanceof ProjectDependency }.each { ProjectDependency dependency ->
+                FatAarPlugin childPlugin = dependency.dependencyProject.plugins.findPlugin(FatAarPlugin)
+                if (childPlugin != null) {
+                    processPluginAfterDependencies(childPlugin, processed, active)
+                }
+            }
+        }
+        active.remove(plugin)
+        plugin.doAfterEvaluate()
+        processed.add(plugin)
+    }
+
+    private void validateNestedEmbedGraphs() {
+        project.android.libraryVariants.all { variant ->
+            nestedEmbedNodesByVariant.put(variant.name,
+                    new NestedEmbedGraphValidator(project, variant as LibraryVariant).validate())
         }
     }
 
