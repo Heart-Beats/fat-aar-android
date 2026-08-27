@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.kezong.fat-aar'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
@@ -29,10 +30,12 @@ android {
     productFlavors {
 
         flavor1 {
+            missingDimensionStrategy 'default2', 'flavor3'
 
         }
 
         flavor2 {
+            missingDimensionStrategy 'default2', 'flavor3'
 
         }
     }
@@ -46,4 +49,60 @@ android.libraryVariants.all { variant ->
 
 dependencies {
     implementation fileTree(dir: 'libs', include: '*.jar')
+    embed project(path: ':lib-aar2', configuration: 'default')
+    compileOnly project(':lib-java')
+}
+
+def registerNestedFatAarVerification = { String variantName ->
+    String variantCapitalized = variantName.capitalize()
+    def bundleTask = tasks.named("bundle${variantCapitalized}Aar")
+    def reBundleTask = tasks.named("reBundleAar${variantCapitalized}")
+    tasks.register("verifyNestedFatAar${variantCapitalized}") {
+        group = 'verification'
+        description = "Verifies the nested fat AAR archive for ${variantName}."
+        dependsOn reBundleTask
+        inputs.file(reBundleTask.flatMap { it.archiveFile })
+        doLast {
+            def sourceAar = bundleTask.get().archiveFile.get().asFile
+            def finalAar = reBundleTask.get().archiveFile.get().asFile
+            if (sourceAar.toPath().normalize() == finalAar.toPath().normalize()) {
+                throw new GradleException("Source and final fat AAR paths must differ: '${sourceAar.absolutePath}'")
+            }
+            rootProject.ext.verifyFatAarArchive(finalAar, [
+                    entries         : [
+                            'AndroidManifest.xml',
+                            'R.txt',
+                            'proguard.txt',
+                            'jni/armeabi-v7a/libnested_embed_marker.so',
+                            'data-binding/com.kezong.demo.libaar2-br.bin',
+                            'data-binding-base-class-log/com.kezong.demo.libaar2-binding_classes.json',
+                    ],
+                    prefixes        : ['data-binding/', 'data-binding-base-class-log/'],
+                    textContains    : [
+                            'AndroidManifest.xml': ['android.permission.ACCESS_NETWORK_STATE'],
+                            'R.txt'              : ['int string app_name_aar2 '],
+                            'proguard.txt'       : ['com.kezong.demo.libaar2.NestedEmbedKotlinMarker'],
+                    ],
+                    classEntries    : [
+                            'com/kezong/demo/libaar/AarLibClass.class',
+                            'com/kezong/demo/libaar2/Aar2LibClass.class',
+                            'com/kezong/demo/libaar2/NestedEmbedKotlinMarker.class',
+                    ],
+                    serviceEntry    : 'META-INF/services/com.kezong.demo.spi.NestedEmbedService',
+                    serviceProviders: [
+                            'com.kezong.demo.libaar.spi.LibAarService',
+                            'com.kezong.demo.libaar2.spi.LibAar2Service',
+                    ],
+                    kotlinModule    : 'META-INF/lib-aar2_flavor3Debug.kotlin_module',
+                    forbiddenClassEntries: [
+                            'META-INF/lib-aar2_flavor4Debug.kotlin_module',
+                    ],
+            ])
+        }
+    }
+}
+
+gradle.projectsEvaluated {
+    registerNestedFatAarVerification('flavor1Debug')
+    registerNestedFatAarVerification('flavor2Debug')
 }

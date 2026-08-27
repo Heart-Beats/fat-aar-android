@@ -40,11 +40,9 @@ dependencies {
     implementation fileTree(dir: 'libs', include: '*.jar')
     // java dependency
     embed project(path: ':lib-java', configuration: 'default')
-    // aar dependency
+    // 直接依赖的本地 AAR 工程
     embed project(path: ':lib-aar', configuration: 'default')
-    // aar dependency
-    embed project(path: ':lib-aar2', configuration: 'default')
-    // local full aar dependency, just build in flavor1
+    // 仅在 flavor1 打包的本地完整 AAR
     flavor1Embed project(path: ':lib-aar-local', configuration: 'default')
     // local full aar dependency, just build in debug
     debugEmbed(name: 'lib-aar-local2', ext: 'aar')
@@ -70,15 +68,31 @@ dependencies {
 # assemble flavor
 ./gradlew :lib-main:assembleFlavor1Debug
 ```
-最终合并产物会覆盖原有aar，同时路径会打印在log信息中.
+最终合并产物位于 `build/outputs/fat-aar/<variant>/`，与 AGP 生成的原始 source AAR 分离，并会在日志中打印其路径。
 
 ### 多级依赖
 
 #### 本地依赖
 
-如果你想将本地所有相关的依赖项全部包含在最终产物中，你需要在你主library中对所有依赖都加上`embed`关键字
+本地工程支持分层嵌套 `embed`。当 Android 子工程在当前选中变体存在适用的 `embed`、`<buildType>Embed`、`<flavor>Embed` 或 `<variant>Embed` 声明时，该子工程必须应用 `com.kezong.fat-aar`。
 
-比如，mainLib依赖lib1，lib1依赖lib2，如果你想将所有依赖都打入最终产物，你必须在mainLib的`build.gradle`中对lib1以及lib2都加上`embed`关键字
+```groovy
+// :lib-main/build.gradle
+dependencies {
+    embed project(path: ':lib-aar', configuration: 'default')
+}
+
+// :lib-aar/build.gradle
+apply plugin: 'com.kezong.fat-aar'
+
+dependencies {
+    embed project(path: ':lib-aar2', configuration: 'default')
+}
+```
+
+对于 `lib-main -> lib-aar -> lib-aar2`，`lib-aar` 会先生成自己的最终 fat AAR，`lib-main` 再消费该最终 AAR。因此最终 `lib-main` AAR 同时包含三层内容，并可递归扩展到更深层级。若子工程存在当前变体适用的 `embed*` 声明却没有应用插件，构建会在配置阶段失败；若该子工程应保持普通 Android Library，请改用 `implementation` 或 `api`。
+
+最终 fat AAR 位于 `build/outputs/fat-aar/<variant>/`，与 AGP 生成的原始 source AAR 分离。
 
 #### 远程依赖
 
@@ -86,9 +100,9 @@ dependencies {
 ```groovy
 fataar {
     /**
-     * If transitive is true, local jar module and remote library's dependencies will be embed.
-     * If transitive is false, just embed first level dependency
-     * Local aar project does not support transitive, always embed first level
+     * transitive 为 true 时，会嵌入本地 JAR 工程与远程库在 POM 中声明的传递依赖。
+     * 它不控制本地 Android Library 的嵌套 embed 行为。
+     * transitive 为 false 时，只嵌入第一层依赖
      * Default value is false
      * @since 1.3.0
      */

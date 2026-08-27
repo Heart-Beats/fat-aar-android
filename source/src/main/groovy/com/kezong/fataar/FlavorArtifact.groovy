@@ -2,8 +2,10 @@ package com.kezong.fataar
 
 import com.android.build.gradle.api.LibraryVariant
 import com.android.builder.model.ProductFlavor
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.UnknownTaskException
 import org.gradle.api.artifacts.ModuleVersionIdentifier
 import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.artifacts.ResolvedDependency
@@ -32,22 +34,16 @@ class FlavorArtifact {
 
     private static final String CLASS_DefaultResolvedArtifact = "org.gradle.api.internal.artifacts.DefaultResolvedArtifact"
 
-    static ResolvedArtifact createFlavorArtifact(Project project, LibraryVariant variant, ResolvedDependency unResolvedArtifact) {
-        Project artifactProject = getArtifactProject(project, unResolvedArtifact)
-        TaskProvider bundleProvider = null;
-        try {
-            bundleProvider = getBundleTask(artifactProject, variant)
-        } catch (Exception ignore) {
-            FatUtils.logError("[$variant.name]Can not resolve :$unResolvedArtifact.moduleName")
-            return null
-        }
-
-        if (bundleProvider == null) {
+    static ResolvedArtifact createFlavorArtifact(Project consumer,
+                                                 SelectedVariantArtifact selectedArtifact,
+                                                 ResolvedDependency unResolvedArtifact) {
+        if (selectedArtifact == null) {
             return null
         }
 
         ModuleVersionIdentifier identifier = createModuleVersionIdentifier(unResolvedArtifact)
-        File artifactFile = createArtifactFile(artifactProject, bundleProvider.get())
+        TaskProvider bundleProvider = selectedArtifact.bundleTask
+        File artifactFile = selectedArtifact.outputFile
         DefaultIvyArtifactName artifactName = createArtifactName(artifactFile)
         Factory<File> fileFactory = new Factory<File>() {
             @Override
@@ -56,14 +52,14 @@ class FlavorArtifact {
             }
         }
         ComponentArtifactIdentifier artifactIdentifier = createComponentIdentifier(artifactFile)
-        if (FatUtils.compareVersion(project.gradle.gradleVersion, "6.0.0") >= 0) {
+        if (FatUtils.compareVersion(consumer.gradle.gradleVersion, "6.0.0") >= 0) {
             TaskDependencyContainer taskDependencyContainer = new TaskDependencyContainer() {
                 @Override
                 void visitDependencies(TaskDependencyResolveContext taskDependencyResolveContext) {
                     taskDependencyResolveContext.add(createTaskDependency(bundleProvider.get()))
                 }
             }
-            if (FatUtils.compareVersion(project.gradle.gradleVersion, "6.8.0") >= 0) {
+            if (FatUtils.compareVersion(consumer.gradle.gradleVersion, "6.8.0") >= 0) {
                 Object fileCalculatedValue = Class.forName(CLASS_CalculatedValueContainer).newInstance(new DisplayName(){
                     @Override
                     String getCapitalizedDisplayName() {
@@ -120,15 +116,6 @@ class FlavorArtifact {
         }
     }
 
-    private static Project getArtifactProject(Project project, ResolvedDependency unResolvedArtifact) {
-        for (Project p : project.getRootProject().getAllprojects()) {
-            if (unResolvedArtifact.moduleName == p.name) {
-                return p
-            }
-        }
-        return null
-    }
-
     private static File createArtifactFile(Project project, Task bundle) {
         File output
         if (FatUtils.compareVersion(project.gradle.gradleVersion, "5.1") >= 0) {
@@ -139,53 +126,204 @@ class FlavorArtifact {
         return output
     }
 
-    private static TaskProvider getBundleTask(Project project, LibraryVariant variant) {
-        TaskProvider bundleTaskProvider = null
-        project.android.libraryVariants.find { subVariant ->
-            // 1. find same flavor
-            if (variant.name == subVariant.name) {
-                try {
-                    bundleTaskProvider = VersionAdapter.getBundleTaskProvider(project, subVariant.name as String)
-                    return true
-                } catch (Exception ignore) {
-                }
-            }
-
-            // 2. find buildType
-            ProductFlavor flavor = variant.productFlavors.isEmpty() ? variant.mergedFlavor : variant.productFlavors.first()
-            if (subVariant.name == variant.buildType.name) {
-                try {
-                    bundleTaskProvider = VersionAdapter.getBundleTaskProvider(project, subVariant.name as String)
-                    return true
-                } catch (Exception ignore) {
-                }
-            }
-
-            // 3. find missingStrategies
-            try {
-                flavor.missingDimensionStrategies.find { entry ->
-                    String toDimension = entry.getKey()
-                    String toFlavor = entry.getValue().getFallbacks().first()
-                    ProductFlavor subFlavor = subVariant.productFlavors.isEmpty() ?
-                            subVariant.mergedFlavor : subVariant.productFlavors.first()
-                    if (toDimension == subFlavor.dimension
-                            && toFlavor == subFlavor.name
-                            && variant.buildType.name == subVariant.buildType.name) {
-                        try {
-                            bundleTaskProvider = VersionAdapter.getBundleTaskProvider(project, subVariant.name as String)
-                            return true
-                        } catch (Exception ignore) {
-                        }
-                    }
-                }
-            } catch (Exception ignore) {
-
-            }
-
-            return bundleTaskProvider != null
+    public static SelectedVariantArtifact selectVariantArtifact(Project producer, LibraryVariant consumerVariant) {
+        if (producer == null || !producer.plugins.hasPlugin('com.android.library')) {
+            return null
         }
 
-        return bundleTaskProvider
+        Collection<LibraryVariant> producerVariants = producer.android.libraryVariants
+
+        // A. Exact variant names still require exact flavor-dimension compatibility.
+        SelectedVariantArtifact selectedArtifact = selectArtifact(producer, producerVariants.find { producerVariant ->
+            consumerVariant.name == producerVariant.name && exactFlavorsAreCompatible(consumerVariant, producerVariant)
+        })
+        if (selectedArtifact != null) {
+            return selectedArtifact
+        }
+
+        LinkedHashSet<String> buildTypes = new LinkedHashSet<>()
+        buildTypes.add(consumerVariant.buildType.name)
+        buildTypes.addAll(getMatchingFallbacks(consumerVariant.buildType))
+
+        // B. Prefer exact flavor compatibility across all build-type candidates.
+        for (String buildType : buildTypes) {
+            selectedArtifact = selectCompatibleArtifact(producer, producerVariants, consumerVariant, buildType, true)
+            if (selectedArtifact != null) {
+                return selectedArtifact
+            }
+        }
+
+        // C. Only then consider flavor and missing-dimension fallbacks.
+        for (String buildType : buildTypes) {
+            selectedArtifact = selectCompatibleArtifact(producer, producerVariants, consumerVariant, buildType, false)
+            if (selectedArtifact != null) {
+                return selectedArtifact
+            }
+        }
+        return null
+    }
+
+    private static SelectedVariantArtifact selectCompatibleArtifact(Project producer,
+                                                                     Collection<LibraryVariant> producerVariants,
+                                                                     LibraryVariant consumerVariant,
+                                                                     String buildType,
+                                                                     boolean exactFlavorsOnly) {
+        Collection<LibraryVariant> compatibleVariants = producerVariants.findAll { producerVariant ->
+            producerVariant.buildType.name == buildType &&
+                    (exactFlavorsOnly ? exactFlavorsAreCompatible(consumerVariant, producerVariant) :
+                            fallbackFlavorsAreCompatible(consumerVariant, producerVariant))
+        }
+        for (LibraryVariant producerVariant : compatibleVariants.sort { left, right ->
+            flavorPreference(consumerVariant, left) <=> flavorPreference(consumerVariant, right)
+        }) {
+            SelectedVariantArtifact selectedArtifact = selectArtifact(producer, producerVariant)
+            if (selectedArtifact != null) {
+                return selectedArtifact
+            }
+        }
+        return null
+    }
+
+    private static List<Integer> flavorPreference(LibraryVariant consumerVariant, LibraryVariant producerVariant) {
+        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(variantFlavors(consumerVariant))
+        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
+        List<Integer> preference = new ArrayList<>()
+        producerFlavors.keySet().sort().each { String dimension ->
+            ProductFlavor consumerFlavor = consumerFlavors.get(dimension)
+            ProductFlavor producerFlavor = producerFlavors.get(dimension)
+            if (consumerFlavor != null) {
+                preference.add(flavorFallbackIndex(consumerFlavor.name, getMatchingFallbacks(consumerFlavor), producerFlavor.name))
+            } else {
+                preference.add(missingDimensionFallbackIndex(consumerVariant, producerFlavor))
+            }
+        }
+        return preference
+    }
+
+    private static int flavorFallbackIndex(String name, Collection<String> fallbacks, String candidate) {
+        if (name == candidate) {
+            return 0
+        }
+        int index = fallbacks.indexOf(candidate)
+        return index < 0 ? Integer.MAX_VALUE : index + 1
+    }
+
+    private static int missingDimensionFallbackIndex(LibraryVariant consumerVariant, ProductFlavor producerFlavor) {
+        for (ProductFlavor consumerFlavor : strategyFlavors(consumerVariant)) {
+            try {
+                def strategy = consumerFlavor.missingDimensionStrategies.get(producerFlavor.dimension)
+                if (strategy != null) {
+                    int index = strategy.fallbacks.indexOf(producerFlavor.name)
+                    if (index >= 0) {
+                        return index + 1
+                    }
+                }
+            } catch (MissingPropertyException | MissingMethodException ignore) {
+                // Older AGP model objects may not expose missingDimensionStrategies.
+            }
+        }
+        return Integer.MAX_VALUE
+    }
+
+    private static boolean exactFlavorsAreCompatible(LibraryVariant consumerVariant, LibraryVariant producerVariant) {
+        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(variantFlavors(consumerVariant))
+        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
+        for (Map.Entry<String, ProductFlavor> consumerEntry : consumerFlavors.entrySet()) {
+            ProductFlavor producerFlavor = producerFlavors.get(consumerEntry.key)
+            if (producerFlavor != null && producerFlavor.name != consumerEntry.value.name) {
+                return false
+            }
+        }
+        return producerExtraDimensionsAreAccepted(consumerVariant, consumerFlavors, producerFlavors)
+    }
+
+    private static boolean fallbackFlavorsAreCompatible(LibraryVariant consumerVariant, LibraryVariant producerVariant) {
+        Map<String, ProductFlavor> consumerFlavors = flavorsByDimension(variantFlavors(consumerVariant))
+        Map<String, ProductFlavor> producerFlavors = flavorsByDimension(variantFlavors(producerVariant))
+        for (Map.Entry<String, ProductFlavor> consumerEntry : consumerFlavors.entrySet()) {
+            ProductFlavor producerFlavor = producerFlavors.get(consumerEntry.key)
+            if (producerFlavor != null && consumerEntry.value.name != producerFlavor.name &&
+                    !getMatchingFallbacks(consumerEntry.value).contains(producerFlavor.name)) {
+                return false
+            }
+        }
+        return producerExtraDimensionsAreAccepted(consumerVariant, consumerFlavors, producerFlavors)
+    }
+
+    private static boolean producerExtraDimensionsAreAccepted(LibraryVariant consumerVariant,
+                                                               Map<String, ProductFlavor> consumerFlavors,
+                                                               Map<String, ProductFlavor> producerFlavors) {
+        return producerFlavors.every { String dimension, ProductFlavor producerFlavor ->
+            return consumerFlavors.containsKey(dimension) ||
+                    matchesMissingDimensionStrategy(consumerVariant, producerFlavor)
+        }
+    }
+
+    private static Collection<ProductFlavor> variantFlavors(LibraryVariant variant) {
+        Collection<ProductFlavor> flavors = variant.productFlavors ?: Collections.emptyList()
+        if (!flavors.isEmpty()) {
+            return flavors
+        }
+        return variant.mergedFlavor == null ? Collections.emptyList() : [variant.mergedFlavor]
+    }
+
+    private static Map<String, ProductFlavor> flavorsByDimension(Collection<ProductFlavor> flavors) {
+        Map<String, ProductFlavor> byDimension = new LinkedHashMap<>()
+        flavors.each { ProductFlavor flavor ->
+            if (flavor != null && flavor.dimension != null) {
+                byDimension.put(flavor.dimension, flavor)
+            }
+        }
+        return byDimension
+    }
+
+    private static Collection<ProductFlavor> strategyFlavors(LibraryVariant variant) {
+        Collection<ProductFlavor> flavors = new ArrayList<>(variantFlavors(variant))
+        if (variant.mergedFlavor != null && !flavors.contains(variant.mergedFlavor)) {
+            flavors.add(variant.mergedFlavor)
+        }
+        return flavors
+    }
+
+    private static boolean matchesMissingDimensionStrategy(LibraryVariant consumerVariant, ProductFlavor producerFlavor) {
+        return strategyFlavors(consumerVariant).any { ProductFlavor consumerFlavor ->
+            try {
+                def strategy = consumerFlavor.missingDimensionStrategies.get(producerFlavor.dimension)
+                return strategy != null && strategy.fallbacks.contains(producerFlavor.name)
+            } catch (MissingPropertyException | MissingMethodException ignore) {
+                return false
+            }
+        }
+    }
+
+    private static List<String> getMatchingFallbacks(Object flavorOrBuildType) {
+        if (flavorOrBuildType == null) {
+            return Collections.emptyList()
+        }
+        try {
+            def fallbacks = flavorOrBuildType.getMatchingFallbacks()
+            return fallbacks == null ? Collections.emptyList() : fallbacks.collect { it.toString() }
+        } catch (MissingMethodException | MissingPropertyException ignore) {
+            return Collections.emptyList()
+        }
+    }
+
+    private static SelectedVariantArtifact selectArtifact(Project producer, LibraryVariant variant) {
+        if (variant == null) {
+            return null
+        }
+        TaskProvider bundleTask
+        try {
+            bundleTask = VersionAdapter.getBundleTaskProvider(producer, variant.name as String)
+        } catch (UnknownTaskException ignore) {
+            return null
+        }
+        try {
+            File outputFile = createArtifactFile(producer, bundleTask.get())
+            return new SelectedVariantArtifact(producer, variant, bundleTask, outputFile)
+        } catch (Exception exception) {
+            throw new GradleException("Can not resolve bundle output for project '$producer.path', variant '$variant.name', task '$bundleTask.name'", exception)
+        }
     }
 
     private static TaskDependency createTaskDependency(Task bundleTask) {
