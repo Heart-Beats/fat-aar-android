@@ -68,6 +68,8 @@ def registerNestedFatAarVerification = { String variantName ->
                             'R.txt',
                             'proguard.txt',
                             'jni/armeabi-v7a/libnested_embed_marker.so',
+                            'data-binding/com.kezong.demo.libaar2-br.bin',
+                            'data-binding-base-class-log/com.kezong.demo.libaar2-binding_classes.json',
                     ],
                     prefixes        : ['data-binding/', 'data-binding-base-class-log/'],
                     textContains    : [
