@@ -19,3 +19,117 @@ allprojects {
         jcenter()
     }
 }
+
+ext.verifyFatAarArchive = { File aarFile, Map expected ->
+    def fail = { String issue ->
+        throw new GradleException("Fat AAR verification failed for '${aarFile.absolutePath}': ${issue}")
+    }
+    if (!aarFile.isFile() || !aarFile.canRead()) {
+        fail("AAR is missing or unreadable")
+    }
+
+    java.util.zip.ZipFile aar = null
+    try {
+        aar = new java.util.zip.ZipFile(aarFile)
+        Set<String> outerEntries = new LinkedHashSet<String>()
+        aar.entries().each { outerEntries.add(it.name) }
+
+        expected.entries.each { String entryName ->
+            if (!outerEntries.contains(entryName)) {
+                fail("missing AAR entry '${entryName}'")
+            }
+        }
+        expected.prefixes.each { String prefix ->
+            if (!outerEntries.any { it.startsWith(prefix) }) {
+                fail("missing AAR entry with prefix '${prefix}'")
+            }
+        }
+
+        expected.textContains.each { String entryName, List<String> markers ->
+            def entry = aar.getEntry(entryName)
+            if (entry == null) {
+                fail("missing AAR entry '${entryName}'")
+            }
+            InputStream stream = null
+            try {
+                stream = aar.getInputStream(entry)
+                String text = stream.getText('UTF-8')
+                markers.each { String marker ->
+                    if (!text.contains(marker)) {
+                        fail("entry '${entryName}' is missing marker '${marker}'")
+                    }
+                }
+            } finally {
+                if (stream != null) {
+                    stream.close()
+                }
+            }
+        }
+
+        def classesEntry = aar.getEntry('classes.jar')
+        if (classesEntry == null) {
+            fail("missing AAR entry 'classes.jar'")
+        }
+        InputStream classesInput = null
+        java.util.zip.ZipInputStream classesJar = null
+        Set<String> classEntries = new LinkedHashSet<String>()
+        String serviceText = null
+        try {
+            classesInput = aar.getInputStream(classesEntry)
+            classesJar = new java.util.zip.ZipInputStream(classesInput)
+            java.util.zip.ZipEntry classEntry
+            byte[] buffer = new byte[4096]
+            while ((classEntry = classesJar.nextEntry) != null) {
+                classEntries.add(classEntry.name)
+                if (classEntry.name == expected.serviceEntry) {
+                    ByteArrayOutputStream output = new ByteArrayOutputStream()
+                    int count
+                    while ((count = classesJar.read(buffer)) != -1) {
+                        output.write(buffer, 0, count)
+                    }
+                    serviceText = new String(output.toByteArray(), 'UTF-8')
+                }
+                classesJar.closeEntry()
+            }
+        } finally {
+            if (classesJar != null) {
+                classesJar.close()
+            } else if (classesInput != null) {
+                classesInput.close()
+            }
+        }
+
+        expected.classEntries.each { String entryName ->
+            if (!classEntries.contains(entryName)) {
+                fail("classes.jar is missing '${entryName}'")
+            }
+        }
+        def kotlinModules = classEntries.findAll {
+            it.startsWith('META-INF/') && it.endsWith('.kotlin_module')
+        }
+        if (kotlinModules.isEmpty()) {
+            fail("classes.jar is missing Kotlin metadata")
+        }
+        if (!classEntries.contains(expected.kotlinModule)) {
+            fail("classes.jar is missing lib-aar2 Kotlin metadata '${expected.kotlinModule}'")
+        }
+        if (serviceText == null) {
+            fail("classes.jar is missing SPI entry '${expected.serviceEntry}'")
+        }
+        List<String> providers = serviceText.readLines().collect { it.trim() }.findAll {
+            !it.isEmpty() && !it.startsWith('#')
+        }
+        if (providers.size() != expected.serviceProviders.size() ||
+                providers.toSet() != expected.serviceProviders.toSet()) {
+            fail("SPI entry '${expected.serviceEntry}' expected exactly ${expected.serviceProviders} but was ${providers}")
+        }
+    } catch (GradleException exception) {
+        throw exception
+    } catch (Exception exception) {
+        throw new GradleException("Fat AAR verification failed for '${aarFile.absolutePath}': cannot read archive", exception)
+    } finally {
+        if (aar != null) {
+            aar.close()
+        }
+    }
+}

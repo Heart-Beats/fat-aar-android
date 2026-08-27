@@ -46,19 +46,68 @@ android {
     }
 }
 
-afterEvaluate {
-    // for app test, copy the final aar to application libs
-    android.libraryVariants.all { variant ->
-        File outputFile = variant.outputs.first().outputFile
-        tasks.named("assemble${variant.name.capitalize()}").configure {
-            doLast {
-                copy {
-                    from outputFile
-                    into "../app/libs"
-                    rename outputFile.name, "fat-aar-final.aar"
-                }
-            }
+def registerNestedFatAarVerification = { String variantName ->
+    String variantCapitalized = variantName.capitalize()
+    def bundleTask = tasks.named("bundle${variantCapitalized}Aar")
+    tasks.register("verifyNestedFatAar${variantCapitalized}") {
+        group = 'verification'
+        description = "Verifies the final nested fat AAR archive for ${variantName}."
+        dependsOn tasks.named("reBundleAar${variantCapitalized}")
+        inputs.file(bundleTask.flatMap { it.archiveFile })
+        doLast {
+            rootProject.ext.verifyFatAarArchive(bundleTask.get().archiveFile.get().asFile, [
+                    entries         : [
+                            'AndroidManifest.xml',
+                            'R.txt',
+                            'proguard.txt',
+                            'jni/armeabi-v7a/libnested_embed_marker.so',
+                    ],
+                    prefixes        : ['data-binding/', 'data-binding-base-class-log/'],
+                    textContains    : [
+                            'AndroidManifest.xml': [
+                                    'android.permission.BLUETOOTH',
+                                    'android.permission.ACCESS_NETWORK_STATE',
+                            ],
+                            'R.txt'              : [
+                                    'int string app_name_aar ',
+                                    'int string app_name_aar2 ',
+                            ],
+                            'proguard.txt'       : [
+                                    'com.kezong.demo.libaar.AarLibClass',
+                                    'com.kezong.demo.libaar2.NestedEmbedKotlinMarker',
+                            ],
+                    ],
+                    classEntries    : [
+                            'com/kezong/demo/lib/MainLibClass.class',
+                            'com/kezong/demo/libaar/AarLibClass.class',
+                            'com/kezong/demo/libaar2/Aar2LibClass.class',
+                            'com/kezong/demo/libaar2/NestedEmbedKotlinMarker.class',
+                    ],
+                    serviceEntry    : 'META-INF/services/com.kezong.demo.spi.NestedEmbedService',
+                    serviceProviders: [
+                            'com.kezong.demo.libaar.spi.LibAarService',
+                            'com.kezong.demo.libaar2.spi.LibAar2Service',
+                    ],
+                    kotlinModule    : 'META-INF/lib-aar2_flavor3Debug.kotlin_module',
+            ])
         }
+    }
+}
+
+afterEvaluate {
+    registerNestedFatAarVerification('flavor1Debug')
+    registerNestedFatAarVerification('flavor2Debug')
+
+    def flavor1DebugBundleTask = tasks.named('bundleFlavor1DebugAar')
+    tasks.register('syncVerifiedFatAarForApp', Copy) {
+        group = 'verification'
+        description = 'Copies the verified flavor1Debug fat AAR for the app integration build.'
+        dependsOn tasks.named('verifyNestedFatAarFlavor1Debug')
+        from flavor1DebugBundleTask.flatMap { it.archiveFile }
+        into rootProject.file('app/libs')
+        rename { 'fat-aar-final.aar' }
+        inputs.file(flavor1DebugBundleTask.flatMap { it.archiveFile })
+        outputs.file(rootProject.file('app/libs/fat-aar-final.aar'))
     }
 }
 

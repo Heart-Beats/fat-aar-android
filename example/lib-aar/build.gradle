@@ -52,3 +52,46 @@ dependencies {
     embed project(path: ':lib-aar2', configuration: 'default')
     compileOnly project(':lib-java')
 }
+
+def registerNestedFatAarVerification = { String variantName ->
+    String variantCapitalized = variantName.capitalize()
+    def bundleTask = tasks.named("bundle${variantCapitalized}Aar")
+    tasks.register("verifyNestedFatAar${variantCapitalized}") {
+        group = 'verification'
+        description = "Verifies the nested fat AAR archive for ${variantName}."
+        dependsOn tasks.named("reBundleAar${variantCapitalized}")
+        inputs.file(bundleTask.flatMap { it.archiveFile })
+        doLast {
+            rootProject.ext.verifyFatAarArchive(bundleTask.get().archiveFile.get().asFile, [
+                    entries         : [
+                            'AndroidManifest.xml',
+                            'R.txt',
+                            'proguard.txt',
+                            'jni/armeabi-v7a/libnested_embed_marker.so',
+                    ],
+                    prefixes        : ['data-binding/', 'data-binding-base-class-log/'],
+                    textContains    : [
+                            'AndroidManifest.xml': ['android.permission.ACCESS_NETWORK_STATE'],
+                            'R.txt'              : ['int string app_name_aar2 '],
+                            'proguard.txt'       : ['com.kezong.demo.libaar2.NestedEmbedKotlinMarker'],
+                    ],
+                    classEntries    : [
+                            'com/kezong/demo/libaar/AarLibClass.class',
+                            'com/kezong/demo/libaar2/Aar2LibClass.class',
+                            'com/kezong/demo/libaar2/NestedEmbedKotlinMarker.class',
+                    ],
+                    serviceEntry    : 'META-INF/services/com.kezong.demo.spi.NestedEmbedService',
+                    serviceProviders: [
+                            'com.kezong.demo.libaar.spi.LibAarService',
+                            'com.kezong.demo.libaar2.spi.LibAar2Service',
+                    ],
+                    kotlinModule    : 'META-INF/lib-aar2_flavor3Debug.kotlin_module',
+            ])
+        }
+    }
+}
+
+afterEvaluate {
+    registerNestedFatAarVerification('flavor1Debug')
+    registerNestedFatAarVerification('flavor2Debug')
+}
