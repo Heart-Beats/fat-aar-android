@@ -47,6 +47,7 @@ repositories {
 }
 
 tasks.named('preBuild').configure {
+    dependsOn gradle.includedBuild('source').task(':build')
     dependsOn ':lib-main:syncVerifiedFatAarForApp'
 }
 
