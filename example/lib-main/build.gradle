@@ -49,13 +49,19 @@ android {
 def registerNestedFatAarVerification = { String variantName ->
     String variantCapitalized = variantName.capitalize()
     def bundleTask = tasks.named("bundle${variantCapitalized}Aar")
+    def reBundleTask = tasks.named("reBundleAar${variantCapitalized}")
     tasks.register("verifyNestedFatAar${variantCapitalized}") {
         group = 'verification'
         description = "Verifies the final nested fat AAR archive for ${variantName}."
-        dependsOn tasks.named("reBundleAar${variantCapitalized}")
-        inputs.file(bundleTask.flatMap { it.archiveFile })
+        dependsOn reBundleTask
+        inputs.file(reBundleTask.flatMap { it.archiveFile })
         doLast {
-            rootProject.ext.verifyFatAarArchive(bundleTask.get().archiveFile.get().asFile, [
+            def sourceAar = bundleTask.get().archiveFile.get().asFile
+            def finalAar = reBundleTask.get().archiveFile.get().asFile
+            if (sourceAar.toPath().normalize() == finalAar.toPath().normalize()) {
+                throw new GradleException("Source and final fat AAR paths must differ: '${sourceAar.absolutePath}'")
+            }
+            rootProject.ext.verifyFatAarArchive(finalAar, [
                     entries         : [
                             'AndroidManifest.xml',
                             'R.txt',
@@ -93,24 +99,27 @@ def registerNestedFatAarVerification = { String variantName ->
                             'com.kezong.demo.libaar2.spi.LibAar2Service',
                     ],
                     kotlinModule    : 'META-INF/lib-aar2_flavor3Debug.kotlin_module',
+                    forbiddenClassEntries: [
+                            'META-INF/lib-aar2_flavor4Debug.kotlin_module',
+                    ],
             ])
         }
     }
 }
 
-afterEvaluate {
+gradle.projectsEvaluated {
     registerNestedFatAarVerification('flavor1Debug')
     registerNestedFatAarVerification('flavor2Debug')
 
-    def flavor1DebugBundleTask = tasks.named('bundleFlavor1DebugAar')
+    def flavor1DebugReBundleTask = tasks.named('reBundleAarFlavor1Debug')
     tasks.register('syncVerifiedFatAarForApp', Copy) {
         group = 'verification'
         description = 'Copies the verified flavor1Debug fat AAR for the app integration build.'
         dependsOn tasks.named('verifyNestedFatAarFlavor1Debug')
-        from flavor1DebugBundleTask.flatMap { it.archiveFile }
+        from flavor1DebugReBundleTask.flatMap { it.archiveFile }
         into rootProject.file('app/libs')
         rename { 'fat-aar-final.aar' }
-        inputs.file(flavor1DebugBundleTask.flatMap { it.archiveFile })
+        inputs.file(flavor1DebugReBundleTask.flatMap { it.archiveFile })
         outputs.file(rootProject.file('app/libs/fat-aar-final.aar'))
     }
 }

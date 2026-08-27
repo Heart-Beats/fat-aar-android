@@ -44,11 +44,9 @@ dependencies {
     implementation fileTree(dir: 'libs', include: '*.jar')
     // java dependency
     embed project(path: ':lib-java', configuration: 'default')
-    // aar dependency
+    // direct local AAR dependency
     embed project(path: ':lib-aar', configuration: 'default')
-    // aar dependency
-    embed project(path: ':lib-aar2', configuration: 'default')
-    // local full aar dependency, just build in flavor1
+    // variant-specific local AAR dependency
     flavor1Embed project(path: ':lib-aar-local', configuration: 'default')
     // local full aar dependency, just build in debug
     debugEmbed(name: 'lib-aar-local2', ext: 'aar')
@@ -64,17 +62,34 @@ dependencies {
 ### Transitive
 
 #### Local Dependency
-If you want to include local transitive dependencies in final artifact, you must add `embed` for transitive dependencies in your main library. 
 
-For example, mainLib depend on subLib1, subLib1 depend on subLib2, If you want include all dependencies in the final artifact, you must add `embed` for subLib1 and subLib2 in mainLib `build.gradle`
+Nested local projects are packaged as layered fat AARs. Each Android library that has an `embed`, `<buildType>Embed`, `<flavor>Embed`, or `<variant>Embed` dependency applicable to the selected variant must apply `com.kezong.fat-aar` itself.
+
+```groovy
+// :lib-main/build.gradle
+dependencies {
+    embed project(path: ':lib-aar', configuration: 'default')
+}
+
+// :lib-aar/build.gradle
+apply plugin: 'com.kezong.fat-aar'
+
+dependencies {
+    embed project(path: ':lib-aar2', configuration: 'default')
+}
+```
+
+For a chain `lib-main -> lib-aar -> lib-aar2`, `lib-aar` first produces its final fat AAR and `lib-main` consumes that final AAR. The final `lib-main` AAR therefore contains all three layers. This applies recursively to deeper chains. A child with applicable `embed*` declarations that does not apply the plugin fails during configuration; use `implementation` or `api` instead when that child should remain a normal Android library.
+
+The final fat AAR is written to `build/outputs/fat-aar/<variant>/`, separate from AGP's source AAR.
 
 #### Remote Dependency
 If you want to inlcude all of the remote transitive dependencies which are in POM file, you need change the `transitive` value to true in your `build.gradle`, like this:
 ```groovy
 fataar {
     /**
-     * If transitive is true, local jar module and remote library's dependencies will be embed. (local aar module does not support)
-     * If transitive is false, just embed first level dependency
+     * If transitive is true, local JAR modules and remote library dependencies are embedded.
+     * It does not control nested local Android library projects.
      * Default value is false
      * @since 1.3.0
      */

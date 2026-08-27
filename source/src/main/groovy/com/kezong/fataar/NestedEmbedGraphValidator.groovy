@@ -69,17 +69,19 @@ class NestedEmbedGraphValidator {
                 }
 
                 TaskProvider reBundleTask = findReBundleTask(child, selection.variant)
+                File finalAarFile = finalAarFile(child, selection.variant, selection.outputFile)
                 if (reBundleTask == null) {
                     String names = childConfigurations.collect { it.name }.join(', ')
                     String expectedTask = "reBundleAar${selection.variant.name.capitalize()}"
                     throw configurationException("Nested fat AAR cannot produce a final AAR: parent '${parent.path}', " +
                             "child '${child.path}', requested variant '${requestedVariant.name}', " +
                             "selected variant '${selection.variant.name}', configurations '${names}', " +
-                            "expected task '${expectedTask}'. Ensure the child module's nested AAR build produces " +
+                            "expected task '${expectedTask}', source AAR '${selection.outputFile.absolutePath}', " +
+                            "expected final AAR '${finalAarFile.absolutePath}'. Ensure the child module's nested AAR build produces " +
                             "a final AAR; do not downgrade it to a thin AAR.")
                 }
                 registerPath(parentKey, childKey, activePath)
-                nodes.add(new NestedEmbedNode(parent, child, requestedVariant.name, selection, reBundleTask))
+                nodes.add(new NestedEmbedNode(parent, child, requestedVariant.name, selection, reBundleTask, finalAarFile))
 
                 if (completed.add(childKey)) {
                     List<String> childPath = new ArrayList<>(activePath)
@@ -106,6 +108,18 @@ class NestedEmbedGraphValidator {
                     "'${firstPathByNode.get(childKey).join(' -> ')}' and '${secondPath.join(' -> ')}'. " +
                     "Layered fat AARs cannot safely merge duplicated descendant content.")
         }
+    }
+
+    private static File finalAarFile(Project project, LibraryVariant variant, File sourceAarFile) {
+        Task task = project.tasks.findByName("reBundleAar${variant.name.capitalize()}")
+        if (task != null && task.hasProperty('archiveFile')) {
+            try {
+                return task.archiveFile.get().asFile
+            } catch (Exception ignored) {
+                // The task may not have configured its archive property yet.
+            }
+        }
+        return DirectoryManager.getFinalAarFile(project, variant, sourceAarFile)
     }
 
     private static TaskProvider findReBundleTask(Project project, LibraryVariant variant) {

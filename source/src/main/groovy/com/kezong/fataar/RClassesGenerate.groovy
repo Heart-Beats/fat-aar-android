@@ -28,15 +28,15 @@ class RClassesGenerate {
         mVersionAdapter = new VersionAdapter(project, variant)
     }
 
-    TaskProvider configure(TaskProvider<Task> reBundleTask) {
-        File rJavaDir = DirectoryManager.getRJavaDirectory(mVariant)
-        File rClassDir = DirectoryManager.getRClassDirectory(mVariant)
-        File rJarDir = DirectoryManager.getRJarDirectory(mVariant)
-        def RJarTask = configureRJarTask(rClassDir, rJarDir, reBundleTask)
-        def RClassTask = configureRClassTask(rJavaDir, rClassDir, RJarTask)
-        def RFileTask = configureRFileTask(rJavaDir, RClassTask)
+    TaskProvider configure(TaskProvider<Task> bundleTask) {
+        File rJavaDir = DirectoryManager.getRJavaDirectory(mProject, mVariant)
+        File rClassDir = DirectoryManager.getRClassDirectory(mProject, mVariant)
+        File rJarDir = DirectoryManager.getRJarDirectory(mProject, mVariant)
+        def RFileTask = configureRFileTask(rJavaDir, bundleTask)
+        def RClassTask = configureRClassTask(rJavaDir, rClassDir, RFileTask)
+        def RJarTask = configureRJarTask(rClassDir, rJarDir, RClassTask)
 
-        return RFileTask
+        return RJarTask
     }
 
     private def createRFile(AndroidArchiveLibrary library, def rFolder, ConfigObject symbolsMap) {
@@ -114,9 +114,9 @@ class RClassesGenerate {
         return map
     }
 
-    private TaskProvider configureRFileTask(final File destFolder, final TaskProvider RClassTask) {
+    private TaskProvider configureRFileTask(final File destFolder, final TaskProvider bundleTask) {
         def task = mProject.tasks.register("createRsFile${mVariant.name}") {
-            finalizedBy(RClassTask)
+            dependsOn(bundleTask)
 
             inputs.files(mLibraries.stream().map { it.symbolFile }.collect())
                     .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -138,13 +138,13 @@ class RClassesGenerate {
         return task
     }
 
-    private TaskProvider configureRClassTask(final File sourceDir, final File destinationDir, final TaskProvider RJarTask) {
+    private TaskProvider configureRClassTask(final File sourceDir, final File destinationDir, final TaskProvider RFileTask) {
         mProject.mkdir(destinationDir)
 
         def classpath = mVersionAdapter.getRClassPath()
         String taskName = "compileRs${mVariant.name.capitalize()}"
         TaskProvider task = mProject.getTasks().register(taskName, JavaCompile.class) {
-            finalizedBy(RJarTask)
+            dependsOn(RFileTask)
 
             it.source = sourceDir.path
             it.sourceCompatibility = mProject.android.compileOptions.sourceCompatibility
@@ -167,10 +167,10 @@ class RClassesGenerate {
         return task
     }
 
-    private TaskProvider configureRJarTask(final File fromDir, final File desFile, final TaskProvider reBundleAarTask) {
+    private TaskProvider configureRJarTask(final File fromDir, final File desFile, final TaskProvider RClassTask) {
         String taskName = "createRsJar${mVariant.name.capitalize()}"
         TaskProvider task = mProject.getTasks().register(taskName, Jar) {
-            finalizedBy(reBundleAarTask)
+            dependsOn(RClassTask)
 
             it.from fromDir.path
             // The destinationDir property has been deprecated.

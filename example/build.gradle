@@ -97,6 +97,9 @@ ext.verifyFatAarArchive = { File aarFile, Map expected ->
         expected.classEntries.each { String entryName ->
             check(classEntries.contains(entryName), "classes.jar is missing '${entryName}'")
         }
+        (expected.forbiddenClassEntries ?: []).each { String entryName ->
+            check(!classEntries.contains(entryName), "classes.jar must not contain '${entryName}'")
+        }
         def kotlinModules = classEntries.findAll {
             it.startsWith('META-INF/') && it.endsWith('.kotlin_module')
         }

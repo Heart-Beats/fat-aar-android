@@ -15,6 +15,7 @@ import org.gradle.api.internal.artifacts.ResolvableDependency
 import org.gradle.api.internal.tasks.CachingTaskDependencyResolveContext
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskDependency
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.Zip
@@ -41,6 +42,10 @@ class VariantProcessor {
     private VersionAdapter mVersionAdapter
 
     private TaskProvider mMergeClassTask
+
+    private TaskProvider mUnpackBundleTask
+
+    private TaskProvider mRJarTask
 
     private Map<String, Project> mEmbedProjectsMap
 
@@ -82,10 +87,7 @@ class VariantProcessor {
         processArtifacts(artifacts, prepareTask, bundleTask)
         processClassesAndJars(bundleTask)
         if (mAndroidArchiveLibraries.isEmpty()) {
-            TaskProvider reBundleTask = configureReBundleAarTask(bundleTask)
-            bundleTask.configure {
-                finalizedBy(reBundleTask)
-            }
+            configureReBundleAarTask(bundleTask)
             return
         }
         processManifest()
@@ -100,7 +102,7 @@ class VariantProcessor {
         processRClasses(transform, bundleTask)
 
         // 改造点 1：重构或增强原有的 DataBinding 处理（必须在 processRClasses 之后，因为需要 Hook reBundleAar 任务）
-        processDataBinding(bundleTask)
+        processDataBinding()
     }
 
     private static void printEmbedArtifacts(Collection<ResolvedArtifact> artifacts,
@@ -156,36 +158,26 @@ class VariantProcessor {
     }
 
     private TaskProvider configureReBundleAarTask(TaskProvider bundleTask) {
-        File aarOutputFile
-        File reBundleDir = DirectoryManager.getReBundleDirectory(mVariant)
-        bundleTask.configure { it ->
-            if (FatUtils.compareVersion(mProject.gradle.gradleVersion, "5.1") >= 0) {
-                aarOutputFile = new File(it.getDestinationDirectory().getAsFile().get(), it.getArchiveFileName().get())
-            } else {
-                aarOutputFile = new File(it.destinationDir, it.archiveName)
-            }
+        File sourceAar = createAarOutputFile(bundleTask)
+        File reBundleDir = DirectoryManager.getReBundleDirectory(mProject, mVariant)
+        File finalAar = DirectoryManager.getFinalAarFile(mProject, mVariant, sourceAar)
+        String variantName = mVariant.name.capitalize()
 
-            doFirst {
-                // Delete previously unzipped data.
-                reBundleDir.deleteDir()
-            }
-
-            doLast {
-                mProject.copy {
-                    from mProject.zipTree(aarOutputFile)
-                    into reBundleDir
-                }
-                FatUtils.deleteEmptyDir(reBundleDir)
-            }
+        mUnpackBundleTask = mProject.tasks.register("unpackBundleAar${variantName}", Sync.class) {
+            it.dependsOn(bundleTask)
+            it.from mProject.zipTree(sourceAar)
+            it.into reBundleDir
+            it.include "**"
+            it.inputs.file(sourceAar).withPathSensitivity(PathSensitivity.RELATIVE)
+            it.outputs.dir(reBundleDir)
         }
 
-        String taskName = "reBundleAar${mVariant.name.capitalize()}"
+        String taskName = "reBundleAar${variantName}"
         TaskProvider task = mProject.getTasks().register(taskName, Zip.class) {
+            it.dependsOn(mUnpackBundleTask)
             it.from reBundleDir
             it.include "**"
-            
-            // Fix: Entry is a duplicate but no duplicate handling strategy has been set.
-            // Introduced in Gradle 7.0+
+
             try {
                 def strategyClass = Class.forName("org.gradle.api.file.DuplicatesStrategy")
                 it.setDuplicatesStrategy(strategyClass.getField("INCLUDE").get(null))
@@ -193,26 +185,31 @@ class VariantProcessor {
                 // Older Gradle versions don't have this or it's not strict.
             }
 
-            if (aarOutputFile == null) {
-                aarOutputFile = mVersionAdapter.getOutputFile()
-            }
             if (FatUtils.compareVersion(mProject.gradle.gradleVersion, "5.1") >= 0) {
-                it.getArchiveFileName().set(aarOutputFile.getName())
-                it.getDestinationDirectory().set(aarOutputFile.getParentFile())
+                it.getArchiveFileName().set(finalAar.name)
+                it.getDestinationDirectory().set(finalAar.parentFile)
             } else {
-                it.archiveName = aarOutputFile.getName()
-                it.destinationDir = aarOutputFile.getParentFile()
+                it.archiveName = finalAar.name
+                it.destinationDir = finalAar.parentFile
             }
 
             doLast {
-                FatUtils.logAnytime(" target: ${aarOutputFile.absolutePath} [${FatUtils.formatDataSize(aarOutputFile.size())}]")
+                FatUtils.logAnytime(" target: ${finalAar.absolutePath} [${FatUtils.formatDataSize(finalAar.size())}]")
             }
         }
-
-        task.configure {
-            dependsOn(bundleTask)
+        Task assembleTask = mProject.tasks.findByName("assemble${variantName}")
+        if (assembleTask != null) {
+            assembleTask.dependsOn(task)
         }
         return task
+    }
+
+    private File createAarOutputFile(TaskProvider bundleTask) {
+        Task task = bundleTask.get()
+        if (FatUtils.compareVersion(mProject.gradle.gradleVersion, "5.1") >= 0) {
+            return new File(task.getDestinationDirectory().getAsFile().get(), task.getArchiveFileName().get())
+        }
+        return new File(task.destinationDir, task.archiveName)
     }
 
     private void processRClasses(RClassesTransform transform, TaskProvider<Task> bundleTask) {
@@ -231,75 +228,58 @@ class VariantProcessor {
     private void transformRClasses(RClassesTransform transform, TaskProvider transformTask, TaskProvider bundleTask, TaskProvider reBundleTask) {
         transform.putTargetPackage(mVariant.name, mVariant.getApplicationId())
         transformTask.configure {
-                    doFirst {
-                        // library package name parsed by aar's AndroidManifest.xml
-                        // so must put after explode tasks perform.
-                        Collection libraryPackages = mAndroidArchiveLibraries
-                                .stream()
-                                .map { it.packageName }
-                                .collect()
-                        transform.putLibraryPackages(mVariant.name, libraryPackages);
-                    }
-                }
-        bundleTask.configure {
-            finalizedBy(reBundleTask)
+            doFirst {
+                // library package name parsed by aar's AndroidManifest.xml
+                // so must put after explode tasks perform.
+                Collection libraryPackages = mAndroidArchiveLibraries
+                        .stream()
+                        .map { it.packageName }
+                        .collect()
+                transform.putLibraryPackages(mVariant.name, libraryPackages)
+            }
+        }
+        reBundleTask.configure {
+            dependsOn(transformTask)
         }
     }
 
     private void generateRClasses(TaskProvider<Task> bundleTask, TaskProvider<Task> reBundleTask) {
         RClassesGenerate rClassesGenerate = new RClassesGenerate(mProject, mVariant, mAndroidArchiveLibraries)
-        TaskProvider RTask = rClassesGenerate.configure(reBundleTask)
-        bundleTask.configure {
-            finalizedBy(RTask)
+        TaskProvider rTask = rClassesGenerate.configure(bundleTask)
+        mRJarTask = rTask
+        reBundleTask.configure {
+            dependsOn(rTask)
         }
     }
 
-    /**
-     * copy data binding file must be do last in BundleTask, and reBundleTask will be package it.
-     * @param bundleTask
-     */
-    private void processDataBinding(TaskProvider<Task> bundleTask) {
+    private void processDataBinding() {
         String variantName = mVariant.name.capitalize()
-        File reBundleDir = DirectoryManager.getReBundleDirectory(mVariant)
+        File reBundleDir = DirectoryManager.getReBundleDirectory(mProject, mVariant)
+        File mergedDbBaseDir = mProject.file("${mProject.buildDir}/intermediates/merged_databinding_final/${mVariant.name}")
+        Collection<File> metadataRoots = new LinkedHashSet<>()
+        metadataRoots.add(reBundleDir)
+        metadataRoots.addAll(mAndroidArchiveLibraries.collect { it.rootFolder })
 
-        // 极其关键：使用独立的合并中转站，不要直接写到 reBundleDir，防止被官方任务清空或产生增量构建冲突
-        def mergedDbBaseDir = mProject.file("${mProject.buildDir}/intermediates/merged_databinding_final/${mVariant.name}")
-
-        // 创建标准插件 Task
         def mergeDbMetadataTask = mProject.tasks.register("mergeDataBindingMetadata${variantName}", MergeDataBindingMetadataTask) {
-            it.androidArchiveLibraries = mAndroidArchiveLibraries
             it.variant = mVariant
-
+            it.metadataRoots = metadataRoots
+            it.mergedDbBaseDir = mergedDbBaseDir
+            it.dependsOn(mUnpackBundleTask)
             it.dependsOn(mExplodeTasks)
-            it.mustRunAfter(bundleTask) // 确保 bundleTask 已经把 AAR 解压到 reBundleDir
-
-            // 建立对子模块编译任务的显示依赖 (fit-aar_hook_fix.gradle 逻辑)
-            for (archiveLibrary in mAndroidArchiveLibraries) {
-                if (archiveLibrary.embedProject != null) {
-                    def subJavacTask = archiveLibrary.embedProject.tasks.findByName("compile${variantName}JavaWithJavac")
-                    if (subJavacTask != null) it.dependsOn(subJavacTask)
-                }
+            if (mRJarTask != null) {
+                it.dependsOn(mRJarTask)
             }
-
-            // 声明输入输出，确保增量构建正确
-            it.outputs.dir(mergedDbBaseDir)
         }
 
-        // 确保 reBundleAarTask 在合并任务之后执行，并挂载合并后的文件夹
         mProject.tasks.named("reBundleAar${variantName}").configure {
             it.dependsOn(mergeDbMetadataTask)
-            
-            // 1. 排除 reBundleDir 中原有的（主模块自带的）DataBinding 目录，防止重复或过时
             it.eachFile { file ->
-                if (file.path.startsWith("data-binding/") || file.path.startsWith("data-binding-base-class-log/")) {
-                    // 如果文件来自 reBundleDir，则排除（我们会在下面从 mergedDbBaseDir 重新引入）
-                    if (file.file.absolutePath.replace("\\", "/").startsWith(reBundleDir.absolutePath.replace("\\", "/"))) {
+                if (file.file.absolutePath.replace('\\', '/').startsWith(reBundleDir.absolutePath.replace('\\', '/') + '/')) {
+                    if (file.path.startsWith("data-binding/") || file.path.startsWith("data-binding-base-class-log/")) {
                         file.exclude()
                     }
                 }
             }
-
-            // 2. 将合并后的 DataBinding 根目录挂载到 AAR 根目录
             it.from(mergedDbBaseDir) {
                 include "data-binding/**"
                 include "data-binding-base-class-log/**"
@@ -310,50 +290,62 @@ class VariantProcessor {
     private void processJavaResourcesHooks() {
         String variantName = mVariant.name.capitalize()
         def processJavaResTask = mProject.tasks.findByName("process${variantName}JavaRes")
+        if (processJavaResTask == null) {
+            return
+        }
 
-        if (processJavaResTask != null) {
-            def mergedServicesDir = mProject.file("${mProject.buildDir}/intermediates/merged_services/${mVariant.name}")
-            def extractedKotlinModulesDir = mProject.file("${mProject.buildDir}/intermediates/extracted_kotlin_modules/${mVariant.name}")
+        File mergedServicesDir = mProject.file("${mProject.buildDir}/intermediates/merged_services/${mVariant.name}")
+        File extractedKotlinModulesDir = mProject.file("${mProject.buildDir}/intermediates/extracted_kotlin_modules/${mVariant.name}")
+        Collection<File> embeddedRoots = mAndroidArchiveLibraries.collect { it.rootFolder }
+        Collection<File> serviceSourceDirectories = getLocalServiceSourceDirectories()
+        def mergeServiceAndKotlinTask = mProject.tasks.register("mergeEmbedServicesAndKotlin${variantName}", MergeEmbedServicesAndKotlinTask) {
+            it.variant = mVariant
+            it.embeddedAarRoots = embeddedRoots
+            it.localServiceSourceDirectories = serviceSourceDirectories
+            it.mergedServicesDir = mergedServicesDir
+            it.extractedKotlinModulesDir = extractedKotlinModulesDir
+            it.dependsOn(mExplodeTasks)
+        }
 
-            // Create standalone merge task, track sub-project references via embedProject to avoid circular deps
-            def mergeServiceAndKotlinTask = mProject.tasks.register("mergeEmbedServicesAndKotlin${variantName}", MergeEmbedServicesAndKotlinTask) {
-                it.androidArchiveLibraries = mAndroidArchiveLibraries
-                it.variant = mVariant
-
-                it.dependsOn(mExplodeTasks)
-                // Wire dependency chain: ensure sub-module resource tasks and Kotlin compile are ready first
-                for (archiveLibrary in mAndroidArchiveLibraries) {
-                    if (archiveLibrary.embedProject != null) {
-                        def subProcessRes = archiveLibrary.embedProject.tasks.findByName("process${variantName}JavaRes")
-                        if (subProcessRes != null) it.dependsOn(subProcessRes)
-                        def subCompileKotlin = archiveLibrary.embedProject.tasks.findByName("compile${variantName}Kotlin")
-                        if (subCompileKotlin != null) it.dependsOn(subCompileKotlin)
-                    }
-                }
+        processJavaResTask.dependsOn(mergeServiceAndKotlinTask)
+        processJavaResTask.exclude { details ->
+            String sourcePath = details.file.absolutePath.replace('\\', '/')
+            if (sourcePath.contains('/merged_services/') || sourcePath.contains('/extracted_kotlin_modules/')) {
+                return false
             }
-
-            // 配置任务依赖关系（与 hook 脚本一致）
-            processJavaResTask.dependsOn(mergeServiceAndKotlinTask)
-
-            // 智能闭包过滤器：拦截原始 SPI 和 Kotlin 模块文件，防止与合并后的版本重复
-            processJavaResTask.exclude { details ->
-                def srcPath = details.file.absolutePath
-                // 来自亲手建立的合并输出临时目录，绝不能过滤，放行！
-                if (srcPath.contains("merged_services") || srcPath.contains("extracted_kotlin_modules")) {
-                    return false
-                }
-                // 拦截来自各个子模块分散的原始旧文件，防止它们重复写入造成错误
-                return details.path.startsWith("META-INF/services/") || details.path.endsWith(".kotlin_module")
+            if (details.path.startsWith('META-INF/services/')) {
+                return true
             }
-
-            // 完美喂入合并后的新资源
-            processJavaResTask.from(mergedServicesDir) {
-                include "META-INF/services/*"
-            }
-            processJavaResTask.from(extractedKotlinModulesDir) {
-                into "META-INF"
+            return embeddedRoots.any { File root ->
+                String rootPath = root.absolutePath.replace('\\', '/') + '/'
+                sourcePath.startsWith(rootPath) && details.path.endsWith('.kotlin_module')
             }
         }
+        processJavaResTask.from(mergedServicesDir) {
+            include "META-INF/services/*"
+        }
+        processJavaResTask.from(extractedKotlinModulesDir) {
+            into "META-INF"
+        }
+    }
+
+    private Collection<File> getLocalServiceSourceDirectories() {
+        LinkedHashSet<String> sourceSetNames = new LinkedHashSet<>()
+        sourceSetNames.add('main')
+        sourceSetNames.add(mVariant.buildType.name)
+        sourceSetNames.add(mVariant.flavorName)
+        sourceSetNames.add(mVariant.name)
+        mVariant.productFlavors.each { flavor ->
+            sourceSetNames.add(flavor.name)
+        }
+
+        LinkedHashSet<File> directories = new LinkedHashSet<>()
+        mProject.android.sourceSets.each { DefaultAndroidSourceSet sourceSet ->
+            if (sourceSetNames.contains(sourceSet.name)) {
+                directories.addAll(sourceSet.resources.srcDirs)
+            }
+        }
+        return directories
     }
 
     // gradle < 6, return TaskDependency
@@ -445,10 +437,11 @@ class VariantProcessor {
     }
 
     private void verifyNestedAarOutput(NestedEmbedNode node) {
-        File output = node.selection.outputFile
+        File output = node.finalAarFile
         String details = "parent '${mProject.path}', child '${node.childProject.path}', " +
                 "requested variant '${node.requestedVariant}', selected variant '${node.selection.variant.name}', " +
-                "task '${node.reBundleTask.name}', expected output '${output.absolutePath}'"
+                "task '${node.reBundleTask.name}', source AAR '${node.selection.outputFile.absolutePath}', " +
+                "expected final output '${output.absolutePath}'"
         if (!output.isFile() || !output.canRead()) {
             throw new GradleException("Nested fat AAR output is not readable: ${details}")
         }
@@ -495,7 +488,7 @@ class VariantProcessor {
                 def name = artifact.name.capitalize()
                 String taskName = "explode${group}${name}${mVariant.name.capitalize()}"
                 Task explodeTask = mProject.tasks.create(taskName, Copy) {
-                    File inputAar = nestedNode == null ? artifact.file : nestedNode.selection.outputFile
+                    File inputAar = nestedNode == null ? artifact.file : nestedNode.finalAarFile
                     from mProject.zipTree(inputAar.absolutePath)
                     into zipFolder
 
@@ -585,7 +578,7 @@ class VariantProcessor {
                         .withPathSensitivity(PathSensitivity.RELATIVE)
                 inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
             }
-            File outputDir = DirectoryManager.getMergeClassDirectory(mVariant)
+            File outputDir = DirectoryManager.getMergeClassDirectory(mProject, mVariant)
             File javacDir = mVersionAdapter.getClassPathDirFiles().first()
             outputs.dir(outputDir)
 

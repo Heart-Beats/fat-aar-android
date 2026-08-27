@@ -10,17 +10,20 @@ class NestedEmbedNode {
     String requestedVariant
     SelectedVariantArtifact selection
     TaskProvider reBundleTask
+    File finalAarFile
 
     NestedEmbedNode(Project parentProject,
                     Project childProject,
                     String requestedVariant,
                     SelectedVariantArtifact selection,
-                    TaskProvider reBundleTask) {
+                    TaskProvider reBundleTask,
+                    File finalAarFile) {
         this.parentProject = parentProject
         this.childProject = childProject
         this.requestedVariant = requestedVariant
         this.selection = selection
         this.reBundleTask = reBundleTask
+        this.finalAarFile = finalAarFile
     }
 
     String getKey() {

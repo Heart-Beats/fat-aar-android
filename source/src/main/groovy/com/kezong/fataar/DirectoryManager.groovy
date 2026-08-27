@@ -19,27 +19,56 @@ class DirectoryManager {
         sProject = project;
     }
 
+    static File getReBundleDirectory(Project project, LibraryVariant variant) {
+        return project.file("${project.buildDir}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/rebundle/${variant.name}")
+    }
+
+    static File getFinalAarFile(Project project, LibraryVariant variant, File sourceAar) {
+        return project.file("${project.buildDir}/outputs/${INTERMEDIATES_TEMP_FOLDER}/${variant.name}/${sourceAar.name}")
+    }
+
+    static File getRJavaDirectory(Project project, LibraryVariant variant) {
+        return project.file("${project.buildDir}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/r/${variant.name}")
+    }
+
+    static File getRClassDirectory(Project project, LibraryVariant variant) {
+        return project.file("${project.buildDir}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/r-class/${variant.name}")
+    }
+
+    static File getRJarDirectory(Project project, LibraryVariant variant) {
+        return new File(getReBundleDirectory(project, variant), "libs")
+    }
+
+    static File getMergeClassDirectory(Project project, LibraryVariant variant) {
+        return project.file("${project.buildDir}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/merge_classes/${variant.name}")
+    }
+
+    static File getKotlinMetaDirectory(Project project, LibraryVariant variant) {
+        return project.file("${project.buildDir}/tmp/kotlin-classes/${variant.name}/META-INF")
+    }
+
+    // Kept for compatibility with existing callers while they migrate to explicit projects.
     static File getReBundleDirectory(LibraryVariant variant) {
-        return sProject.file("${sProject.getBuildDir()}/outputs/${RE_BUNDLE_FOLDER}/${variant.name}")
+        return getReBundleDirectory(sProject, variant)
     }
 
     static File getRJavaDirectory(LibraryVariant variant) {
-        return sProject.file("${sProject.getBuildDir()}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/r/${variant.name}")
+        return getRJavaDirectory(sProject, variant)
     }
 
     static File getRClassDirectory(LibraryVariant variant) {
-        return sProject.file("${sProject.getBuildDir()}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/r-class/${variant.name}")
+        return getRClassDirectory(sProject, variant)
     }
 
     static File getRJarDirectory(LibraryVariant variant) {
-        return sProject.file("${sProject.getBuildDir()}/outputs/${RE_BUNDLE_FOLDER}/${variant.name}/libs")
+        return getRJarDirectory(sProject, variant)
     }
 
     static File getMergeClassDirectory(LibraryVariant variant) {
-        return sProject.file("${sProject.getBuildDir()}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/merge_classes/${variant.name}")
+        return getMergeClassDirectory(sProject, variant)
     }
 
     static File getKotlinMetaDirectory(LibraryVariant variant) {
-        return sProject.file("${sProject.getBuildDir()}/tmp/kotlin-classes/${variant.name}/META-INF")
+        return getKotlinMetaDirectory(sProject, variant)
     }
 }

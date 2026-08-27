@@ -3,76 +3,74 @@ package com.kezong.fataar.tasks
 import com.kezong.fataar.AndroidArchiveLibrary
 import com.kezong.fataar.FatUtils
 import org.gradle.api.DefaultTask
-import org.gradle.api.Project
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
 /**
- * 严格对照 fit-aar_hook_fix.gradle 实现的 DataBinding 合并任务 (带有日志)
+ * 从当前变体实际使用的 AAR 内容合并 DataBinding metadata。
  */
 class MergeDataBindingMetadataTask extends DefaultTask {
 
     @Internal
-    Collection<AndroidArchiveLibrary> androidArchiveLibraries
-
-    @Internal
     Object variant
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    Collection<File> metadataRoots = Collections.emptyList()
+
+    @OutputDirectory
+    File mergedDbBaseDir
 
     @TaskAction
     void merge() {
-        def variantName = variant.name
-        def mergedDbBaseDir = project.file("${project.buildDir}/intermediates/merged_databinding_final/${variantName}")
-        def targetLogDir = new File(mergedDbBaseDir, "data-binding-base-class-log")
-        def targetDataBindDir = new File(mergedDbBaseDir, "data-binding")
+        File targetLogDir = new File(mergedDbBaseDir, "data-binding-base-class-log")
+        File targetDataBindDir = new File(mergedDbBaseDir, "data-binding")
 
-        if (mergedDbBaseDir.exists()) mergedDbBaseDir.deleteDir()
+        if (mergedDbBaseDir.exists()) {
+            mergedDbBaseDir.deleteDir()
+        }
         targetLogDir.mkdirs()
         targetDataBindDir.mkdirs()
 
-        FatUtils.logAnytime("[DataBinding][${variantName}] Starting merge ...")
-
-        // Collect local and remote libraries
-        def localLibs = androidArchiveLibraries.findAll { it.embedProject != null }
-        def remoteLibs = androidArchiveLibraries.findAll { it.embedProject == null && it.rootFolder != null && it.rootFolder.exists() }
-        FatUtils.logAnytime("[DataBinding][${variantName}] Local projects: ${localLibs.collect { it.embedProject.path }.join(', ')}")
-        FatUtils.logAnytime("[DataBinding][${variantName}] Remote AAR/JAR libs: ${remoteLibs.size()}")
-
-        // --- 1. 本地子模块处理逻辑 (fit-aar_hook_fix.gradle L49-L62) ---
-        localLibs.each { archiveLibrary ->
-            Project embedProj = archiveLibrary.embedProject
-            if (embedProj.hasProperty('android')) {
-                def subIntermediates = embedProj.file("build/intermediates")
-                if (subIntermediates.exists()) {
-                    subIntermediates.eachFileRecurse { file ->
-                        if (file.isFile()) {
-                            if (file.name.endsWith("-binding_classes.json")) {
-                                project.copy { from file into targetLogDir }
-                            }
-                            if (file.name.endsWith("-br.bin") || file.name.endsWith("-setter_store.json")) {
-                                project.copy { from file into targetDataBindDir }
-                            }
-                        }
-                    }
-                }
-            }
+        FatUtils.logAnytime("[DataBinding][${variant.name}] Starting merge ...")
+        Map<String, File> sources = new LinkedHashMap<>()
+        for (File root : metadataRoots) {
+            mergeDirectory(root, "data-binding", targetDataBindDir, sources)
+            mergeDirectory(root, "data-binding-base-class-log", targetLogDir, sources)
         }
+        FatUtils.logAnytime("[DataBinding][${variant.name}] Merge completed. Logs: " +
+                "${targetLogDir.listFiles()?.size() ?: 0}, Artifacts: ${targetDataBindDir.listFiles()?.size() ?: 0}")
+    }
 
-        // --- 2. 远程 AAR 或本地 AAR 文件处理逻辑 (fit-aar_hook_fix.gradle L65-L75) ---
-        remoteLibs.each { archiveLibrary ->
-            def rootFolder = archiveLibrary.rootFolder
-            if (rootFolder != null && rootFolder.exists()) {
-                rootFolder.eachFileRecurse { subFile ->
-                    if (subFile.isFile()) {
-                        if (subFile.path.contains("data-binding-base-class-log")) {
-                            project.copy { from subFile into targetLogDir }
-                        } else if (subFile.path.contains("data-binding")) {
-                            project.copy { from subFile into targetDataBindDir }
-                        }
-                    }
-                }
-            }
+    private void mergeDirectory(File root, String entryDirectory, File targetDirectory, Map<String, File> sources) {
+        File sourceDirectory = new File(root, entryDirectory)
+        if (!sourceDirectory.isDirectory()) {
+            return
         }
+        for (File source : project.fileTree(sourceDirectory).files) {
+            String relativePath = sourceDirectory.toPath().relativize(source.toPath()).toString().replace('\\', '/')
+            String entryPath = "${entryDirectory}/${relativePath}"
+            File previous = sources.get(entryPath)
+            if (previous != null) {
+                if (!Arrays.equals(previous.bytes, source.bytes)) {
+                    throw new GradleException("Conflicting DataBinding metadata '${entryPath}' from " +
+                            "'${previous.absolutePath}' and '${source.absolutePath}'.")
+                }
+                continue
+            }
 
-        FatUtils.logAnytime("[DataBinding][${variantName}] Merge completed. Logs: ${targetLogDir.listFiles()?.size() ?: 0}, Artifacts: ${targetDataBindDir.listFiles()?.size() ?: 0}")
+            File target = new File(targetDirectory, relativePath)
+            target.parentFile.mkdirs()
+            Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            sources.put(entryPath, source)
+        }
     }
 }
