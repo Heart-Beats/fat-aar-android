@@ -3,6 +3,7 @@ package com.kezong.fataar
 import com.android.build.gradle.api.LibraryVariant
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.GradleException
 import org.gradle.api.ProjectConfigurationException
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ProjectDependency
@@ -194,8 +195,8 @@ class FatAarPlugin implements Plugin<Project> {
 
     private void checkAndroidPlugin() {
         if (!project.plugins.hasPlugin('com.android.library')) {
-            throw new ProjectConfigurationException('fat-aar-plugin must be applied in project that' +
-                    ' has android library plugin!', null)
+            throw new GradleException('fat-aar-plugin must be applied in project that' +
+                    ' has android library plugin!')
         }
     }
 
@@ -213,7 +214,7 @@ class FatAarPlugin implements Plugin<Project> {
                 if (ARTIFACT_TYPE_AAR == artifact.type || ARTIFACT_TYPE_JAR == artifact.type) {
                     //
                 } else {
-                    throw new ProjectConfigurationException('Only support embed aar and jar dependencies!', null)
+                    throw new GradleException('Only support embed aar and jar dependencies!')
                 }
                 set.add(artifact)
             }
@@ -260,9 +261,8 @@ class FatAarPlugin implements Plugin<Project> {
         }
         if (candidates.size() > 1) {
             String projectPaths = candidates.collect { it.dependencyProject.path }.join(', ')
-            throw new ProjectConfigurationException("Cannot select embedded project for resolved dependency " +
-                    "'${resolvedDependency.moduleName}': declared project dependencies ${projectPaths} have the same module name.",
-                    Collections.emptyList())
+            throw new GradleException("Cannot select embedded project for resolved dependency " +
+                    "'${resolvedDependency.moduleName}': declared project dependencies ${projectPaths} have the same module name.")
         }
         return candidates.first().dependencyProject
     }

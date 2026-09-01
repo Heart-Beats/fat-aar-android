@@ -1,6 +1,7 @@
 package com.kezong.fataar
 
 import com.android.build.gradle.api.LibraryVariant
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.ProjectConfigurationException
 import org.gradle.api.Task
@@ -132,7 +133,10 @@ class NestedEmbedGraphValidator {
         return "${project.path}@${variant.name}"
     }
 
-    private static ProjectConfigurationException configurationException(String message) {
-        return new ProjectConfigurationException(message, null)
+    private static GradleException configurationException(String message) {
+        // GradleException renders reliably across Gradle versions. ProjectConfigurationException's
+        // (String, Throwable)/(String, Iterable) constructors both misbehave with a null cause on
+        // Gradle 7+ (NPE inside DefaultMultiCauseException / ProjectConfigurationException).
+        return new GradleException(message)
     }
 }
