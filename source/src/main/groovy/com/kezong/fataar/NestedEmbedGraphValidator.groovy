@@ -59,6 +59,12 @@ class NestedEmbedGraphValidator {
                 Collection<Configuration> childConfigurations =
                         FatAarPlugin.getNonEmptyApplicableEmbedConfigurations(child, selection.variant)
                 if (childConfigurations.isEmpty()) {
+                    // The child has no embeds of its own: it merges directly into this
+                    // parent's bundle as an ordinary embedded library. Register the path
+                    // anyway, so a leaf reached from two different parents within one
+                    // closure is reported as duplicated content instead of silently
+                    // being merged twice into the ancestor fat AAR.
+                    registerPath(parentKey, childKey, activePath)
                     return
                 }
                 if (!child.plugins.hasPlugin('com.kezong.fat-aar')) {
@@ -105,9 +111,10 @@ class NestedEmbedGraphValidator {
         if (firstParent != parentKey) {
             List<String> secondPath = new ArrayList<>(activePath)
             secondPath.add(childKey)
-            throw configurationException("Nested fat AAR projects share descendant '${childKey}' through " +
+            throw configurationException("Nested embed graph shares descendant '${childKey}' through " +
                     "'${firstPathByNode.get(childKey).join(' -> ')}' and '${secondPath.join(' -> ')}'. " +
-                    "Layered fat AARs cannot safely merge duplicated descendant content.")
+                    "The same module would be merged twice into the ancestor fat AAR. " +
+                    "Keep exactly one embed path to it and use compileOnly for the other parents.")
         }
     }
 
