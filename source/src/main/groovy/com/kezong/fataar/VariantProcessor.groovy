@@ -229,18 +229,45 @@ class VariantProcessor {
         transform.putTargetPackage(mVariant.name, mVariant.getApplicationId())
         transformTask.configure {
             doFirst {
-                // library package name parsed by aar's AndroidManifest.xml
-                // so must put after explode tasks perform.
-                Collection libraryPackages = mAndroidArchiveLibraries
-                        .stream()
-                        .map { it.packageName }
-                        .collect()
-                transform.putLibraryPackages(mVariant.name, libraryPackages)
+                // 需改写的包 = 「会被打进本次 fat aar 的全部包」，而不是仅直接 embed 的库：
+                // 模块代码可合法引用编译期任意内部模块的 R（api 依赖链），这些引用同样必须改写到目标包，
+                // 否则最终 aar 只会有一个聚合 R，运行期将抛 NoClassDefFoundError: <pkg>.R$xxx。
+                transform.putLibraryPackages(mVariant.name, collectRepackagedPackages())
             }
         }
         reBundleTask.configure {
             dependsOn(transformTask)
         }
+    }
+
+    /**
+     * 收集「会被打进本次 fat aar 的全部包名」：
+     * 1) 直接 embed 的 aar 包（兜底：保证合并类目录尚未产出时也可用）；
+     * 2) 合并（explode）后类目录下出现的所有包——覆盖嵌套 / 深层模块以及 embed 的本地 aar。
+     * 未 embed 的外部依赖不在该目录中，其 R 引用天然不会被改写（消费方会提供对应 R）。
+     */
+    private Collection<String> collectRepackagedPackages() {
+        Set<String> packages = new LinkedHashSet<>()
+        mAndroidArchiveLibraries.each { lib ->
+            String pkg = lib.packageName
+            if (pkg != null && !pkg.isEmpty()) {
+                packages.add(pkg)
+            }
+        }
+        File mergeDir = DirectoryManager.getMergeClassDirectory(mProject, mVariant)
+        if (mergeDir != null && mergeDir.exists()) {
+            mergeDir.eachFileRecurse { File f ->
+                if (f.isFile() && f.name.endsWith('.class')) {
+                    String rel = mergeDir.toPath().relativize(f.toPath()).toString().replace('\\', '/')
+                    int idx = rel.lastIndexOf('/')
+                    if (idx > 0) {
+                        packages.add(rel.substring(0, idx).replace('/', '.'))
+                    }
+                }
+            }
+        }
+        FatUtils.logAnytime('[fat-aar][R] repackaged packages of ' + mProject.path + ':' + mVariant.name + ' = ' + packages.size())
+        return packages
     }
 
     private void generateRClasses(TaskProvider<Task> bundleTask, TaskProvider<Task> reBundleTask) {
