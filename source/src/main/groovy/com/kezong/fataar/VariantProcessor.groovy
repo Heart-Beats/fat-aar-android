@@ -518,6 +518,10 @@ class VariantProcessor {
                     File inputAar = nestedNode == null ? artifact.file : nestedNode.finalAarFile
                     from mProject.zipTree(inputAar.absolutePath)
                     into zipFolder
+                    // 显式声明输入/输出：子节点（嵌套 embed 的最终 aar）内容变化时必须重新解包，
+                    // 否则深层源码改动会被旧解包产物吞掉，并逐层传到顶层 fat aar。
+                    inputs.file(inputAar).withPathSensitivity(PathSensitivity.RELATIVE)
+                    outputs.dir(zipFolder)
 
                     doFirst {
                         // Delete previously extracted data.
@@ -667,6 +671,19 @@ class VariantProcessor {
         TaskProvider extractAnnotationsTask = mProject.tasks.named("extract${mVariant.name.capitalize()}Annotations")
 
         mMergeClassTask = handleClassesMergeTask(isMinifyEnabled)
+        // ===== 根治：类合并会把子模块类注入本模块的 javac 输出目录 =====
+        // 凡「产出 classes.jar / aar」的任务都必须排在类合并之后执行，否则产物可能基于注入前的类集合
+        // （表现为改了源码但 aar 里仍是旧类），并在嵌套 embed 下把旧类逐层传播到顶层 fat aar。
+        bundleTask.configure {
+            dependsOn(mMergeClassTask)
+            mustRunAfter(mMergeClassTask)
+        }
+        ['bundleLibRuntimeToJar', 'bundleLibCompileToJar'].each { prefix ->
+            def packagingTask = mProject.tasks.findByName(prefix + mVariant.name.capitalize())
+            if (packagingTask != null) {
+                packagingTask.mustRunAfter(mMergeClassTask)
+            }
+        }
         syncLibTask.configure {
             dependsOn(mMergeClassTask)
             inputs.files(mAndroidArchiveLibraries.stream().map { it.libsFolder }.collect())
