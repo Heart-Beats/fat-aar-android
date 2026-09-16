@@ -42,6 +42,7 @@ class VariantProcessor {
     private VersionAdapter mVersionAdapter
 
     private TaskProvider mMergeClassTask
+    private File mMergedClassesIndex
 
     private TaskProvider mUnpackBundleTask
 
@@ -168,7 +169,15 @@ class VariantProcessor {
             it.from mProject.zipTree(sourceAar)
             it.into reBundleDir
             it.include "**"
-            it.inputs.file(sourceAar).withPathSensitivity(PathSensitivity.RELATIVE)
+            // 关键：用惰性 provider 跟踪 bundle 任务的真实 archive 输出。
+            // 原先在配置期就把 archive 路径算成 File，AGP 的 archive 名/内容变化无法可靠触发本任务，
+            // 会导致「bundle aar 已更新，但 reBundle 仍复用旧解包目录」→ 旧类逐层传到顶层 fat aar。
+            if (FatUtils.compareVersion(mProject.gradle.gradleVersion, "5.1") >= 0) {
+                it.inputs.files(bundleTask.map { Task t -> ((org.gradle.api.tasks.bundling.Zip) t).archiveFile })
+                        .withPathSensitivity(PathSensitivity.RELATIVE)
+            } else {
+                it.inputs.file(sourceAar).withPathSensitivity(PathSensitivity.RELATIVE)
+            }
             it.outputs.dir(reBundleDir)
         }
 
@@ -193,6 +202,8 @@ class VariantProcessor {
                 it.destinationDir = finalAar.parentFile
             }
 
+            it.inputs.dir(reBundleDir)
+            it.outputs.file(finalAar)
             doLast {
                 FatUtils.logAnytime(" target: ${finalAar.absolutePath} [${FatUtils.formatDataSize(finalAar.size())}]")
             }
@@ -210,6 +221,12 @@ class VariantProcessor {
             return new File(task.getDestinationDirectory().getAsFile().get(), task.getArchiveFileName().get())
         }
         return new File(task.destinationDir, task.archiveName)
+    }
+
+    /** 注入索引文件（路径确定，可安全用于 inputs.file 声明） */
+    private File mergedClassesIndexFile() {
+        File mergeDir = DirectoryManager.getMergeClassDirectory(mProject, mVariant)
+        return new File(mergeDir.parentFile, "merged-classes-${mVariant.name}.index")
     }
 
     private void processRClasses(RClassesTransform transform, TaskProvider<Task> bundleTask) {
@@ -612,8 +629,25 @@ class VariantProcessor {
             File outputDir = DirectoryManager.getMergeClassDirectory(mProject, mVariant)
             File javacDir = mVersionAdapter.getClassPathDirFiles().first()
             outputs.dir(outputDir)
+            // 注入索引：记录「本次注入到 javac 目录的类」及其内容哈希。
+            // 作用一（幂等）：下次注入前按索引精确删除上次注入的文件，避免上游删类后的残留；
+            // 作用二（可跟踪）：作为本任务输出、并被下游打包任务作为输入，内容变化即触发重新打包。
+            mMergedClassesIndex = mergedClassesIndexFile()
+            outputs.file(mMergedClassesIndex)
 
             doFirst {
+                // 幂等：先按上次的注入索引，把上次注入到 javac 目录的文件删干净（含已从产物中移除的类）
+                if (mMergedClassesIndex != null && mMergedClassesIndex.exists()) {
+                    mMergedClassesIndex.eachLine { String line ->
+                        int sep = line.indexOf(' ')
+                        if (sep > 0) {
+                            File injected = new File(javacDir, line.substring(sep + 1))
+                            if (injected.exists()) {
+                                injected.delete()
+                            }
+                        }
+                    }
+                }
                 // Extract relative paths and delete previous output.
                 def pathsToDelete = new ArrayList<Path>()
                 mProject.fileTree(outputDir).forEach {
@@ -637,6 +671,19 @@ class VariantProcessor {
                     into javacDir
                     exclude 'META-INF/'
                 }
+                // 写注入索引：<sha1> <相对路径>（按路径排序，保证内容确定）
+                def digest = java.security.MessageDigest.getInstance("SHA-1")
+                def indexLines = []
+                mProject.fileTree(outputDir).forEach { File f ->
+                    if (f.isFile() && f.name.endsWith(".class")) {
+                        String rel = outputDir.toPath().relativize(f.toPath()).toString().replace('\\', '/')
+                        byte[] hash = digest.digest(f.bytes)
+                        digest.reset()
+                        indexLines.add(hash.encodeHex().toString() + " " + rel)
+                    }
+                }
+                indexLines.sort()
+                mMergedClassesIndex.text = indexLines.join(System.lineSeparator())
             }
         }
         return task
@@ -682,7 +729,11 @@ class VariantProcessor {
             def packagingTask = mProject.tasks.findByName(prefix + mVariant.name.capitalize())
             if (packagingTask != null) {
                 packagingTask.mustRunAfter(mMergeClassTask)
+                packagingTask.inputs.file(mergedClassesIndexFile()).withPathSensitivity(PathSensitivity.RELATIVE)
             }
+        }
+        bundleTask.configure {
+            it.inputs.file(mergedClassesIndexFile()).withPathSensitivity(PathSensitivity.RELATIVE)
         }
         syncLibTask.configure {
             dependsOn(mMergeClassTask)
