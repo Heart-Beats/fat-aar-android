@@ -50,20 +50,20 @@ class VariantProcessor {
 
     private Map<String, Project> mEmbedProjectsMap
 
-    private Collection<NestedEmbedNode> mNestedEmbedNodes
+    private Collection<FlattenedEmbedNode> mFlattenedEmbedNodes
 
     private Map<String, SelectedVariantArtifact> mSyntheticArtifactSelections
 
     VariantProcessor(Project project,
                      LibraryVariant variant,
                      Map<String, Project> embedProjectsMap,
-                     Collection<NestedEmbedNode> nestedEmbedNodes = Collections.emptyList(),
+                     Collection<FlattenedEmbedNode> flattenedEmbedNodes = Collections.emptyList(),
                      Map<String, SelectedVariantArtifact> syntheticArtifactSelections = Collections.emptyMap()) {
         mProject = project
         mVariant = variant
         mVersionAdapter = new VersionAdapter(project, variant)
         mEmbedProjectsMap = embedProjectsMap ?: Collections.emptyMap()
-        mNestedEmbedNodes = nestedEmbedNodes ?: Collections.emptyList()
+        mFlattenedEmbedNodes = flattenedEmbedNodes ?: Collections.emptyList()
         mSyntheticArtifactSelections = syntheticArtifactSelections ?: Collections.emptyMap()
     }
 
@@ -73,6 +73,14 @@ class VariantProcessor {
 
     void addJarFile(File jar) {
         mJarFiles.add(jar)
+    }
+
+    /**
+     * 非类内容（res/assets/jniLibs/Manifest/consumer ProGuard/libs/SPI/Kotlin）的合并范围：
+     * 只取直接子模块，因为它们的薄产物已经继承了整棵子树的非类内容，取深层会重复。
+     */
+    private Collection<AndroidArchiveLibrary> getDirectLibraries() {
+        return mAndroidArchiveLibraries.findAll { it.isDirect() }
     }
 
     void processVariant(Collection<ResolvedArtifact> artifacts,
@@ -88,6 +96,8 @@ class VariantProcessor {
         mReBundleTask = configureReBundleAarTask(bundleTask)
         preEmbed(artifacts, dependencies, prepareTask)
         processArtifacts(artifacts, prepareTask, bundleTask)
+        // 深层节点只提供自有 class 与 DataBinding metadata；非类内容由直接子模块的薄产物继承
+        processFlattenedEmbedNodes(bundleTask)
         processClassesAndJars(bundleTask)
         if (mAndroidArchiveLibraries.isEmpty()) {
             return
@@ -253,6 +263,7 @@ class VariantProcessor {
         File mergedDbBaseDir = mProject.file("${mProject.buildDir}/intermediates/merged_databinding_final/${mVariant.name}")
         Collection<File> metadataRoots = new LinkedHashSet<>()
         metadataRoots.add(reBundleDir)
+        // DataBinding 聚合只写入最终产物，薄产物只含自身 metadata，因此必须取全图节点
         metadataRoots.addAll(mAndroidArchiveLibraries.collect { it.rootFolder })
 
         def mergeDbMetadataTask = mProject.tasks.register("mergeDataBindingMetadata${variantName}", MergeDataBindingMetadataTask) {
@@ -292,7 +303,7 @@ class VariantProcessor {
 
         File mergedServicesDir = mProject.file("${mProject.buildDir}/intermediates/merged_services/${mVariant.name}")
         File extractedKotlinModulesDir = mProject.file("${mProject.buildDir}/intermediates/extracted_kotlin_modules/${mVariant.name}")
-        Collection<File> embeddedRoots = mAndroidArchiveLibraries.collect { it.rootFolder }
+        Collection<File> embeddedRoots = getDirectLibraries().collect { it.rootFolder }
         Collection<File> serviceSourceDirectories = getLocalServiceSourceDirectories()
         def mergeServiceAndKotlinTask = mProject.tasks.register("mergeEmbedServicesAndKotlin${variantName}", MergeEmbedServicesAndKotlinTask) {
             FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'servicesAndKotlin')
@@ -379,40 +390,6 @@ class VariantProcessor {
         return null
     }
 
-    private NestedEmbedNode findNestedNode(ResolvedArtifact artifact) {
-        SelectedVariantArtifact syntheticSelection = findSyntheticArtifactSelection(artifact)
-        Project artifactProject = syntheticSelection == null ? findEmbeddedProject(artifact) : syntheticSelection.project
-        if (artifactProject == null) {
-            return null
-        }
-
-        Collection<NestedEmbedNode> candidates = mNestedEmbedNodes.findAll { NestedEmbedNode node ->
-            return node.parentProject.path == mProject.path &&
-                    node.childProject.path == artifactProject.path &&
-                    node.requestedVariant == mVariant.name &&
-                    (syntheticSelection == null || node.selection.variant.name == syntheticSelection.variant.name)
-        }
-        return selectNestedNode(artifact, artifactProject, syntheticSelection, candidates)
-    }
-
-    private NestedEmbedNode selectNestedNode(ResolvedArtifact artifact,
-                                             Project artifactProject,
-                                             SelectedVariantArtifact syntheticSelection,
-                                             Collection<NestedEmbedNode> candidates) {
-        if (candidates.isEmpty()) {
-            return null
-        }
-        if (candidates.size() == 1) {
-            return candidates.first()
-        }
-
-        String selectedVariant = syntheticSelection == null ? '<resolved by Gradle>' : syntheticSelection.variant.name
-        String nodeVariants = candidates.collect { it.selection.variant.name }.unique().join(', ')
-        throw new GradleException("Ambiguous nested embed node for parent '${mProject.path}', child " +
-                "'${artifactProject.path}', requested variant '${mVariant.name}', selected variant " +
-                "'${selectedVariant}', artifact '${artifact.file.absolutePath}'. Candidate selected variants: ${nodeVariants}.")
-    }
-
     private static String normalizedPath(File file) {
         return file.absoluteFile.toPath().normalize().toString()
     }
@@ -433,29 +410,25 @@ class VariantProcessor {
         return dependencies
     }
 
-    private void verifyNestedAarOutput(NestedEmbedNode node) {
-        File output = node.finalAarFile
-        String details = "parent '${mProject.path}', child '${node.childProject.path}', " +
-                "requested variant '${node.requestedVariant}', selected variant '${node.selection.variant.name}', " +
-                "task '${node.reBundleTask.name}', source AAR '${node.selection.outputFile.absolutePath}', " +
-                "expected final output '${output.absolutePath}'"
-        if (!output.isFile() || !output.canRead()) {
-            throw new GradleException("Nested fat AAR output is not readable: ${details}")
+    private void verifyEmbeddedAar(File aar, AndroidArchiveLibrary library) {
+        String details = "project '${mProject.path}', variant '${mVariant.name}', " +
+                "embedded '${library.getName()}', archive '${aar.absolutePath}'"
+        if (aar == null || !aar.isFile() || !aar.canRead()) {
+            throw new GradleException("Embedded thin AAR is not readable: ${details}")
         }
-
-        java.util.zip.ZipFile aar = null
+        java.util.zip.ZipFile zip = null
         try {
-            aar = new java.util.zip.ZipFile(output)
-            if (aar.getEntry('AndroidManifest.xml') == null) {
-                throw new GradleException("Nested fat AAR output is invalid (missing AndroidManifest.xml): ${details}")
+            zip = new java.util.zip.ZipFile(aar)
+            if (zip.getEntry('AndroidManifest.xml') == null) {
+                throw new GradleException("Embedded thin AAR is invalid (missing AndroidManifest.xml): ${details}")
             }
         } catch (GradleException exception) {
             throw exception
         } catch (Exception exception) {
-            throw new GradleException("Nested fat AAR output is not a readable AAR: ${details}", exception)
+            throw new GradleException("Embedded thin AAR is not a readable AAR: ${details}", exception)
         } finally {
-            if (aar != null) {
-                aar.close()
+            if (zip != null) {
+                zip.close()
             }
         }
     }
@@ -473,55 +446,89 @@ class VariantProcessor {
                 addJarFile(artifact.file)
             } else if (FatAarPlugin.ARTIFACT_TYPE_AAR == artifact.type) {
                 AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(mProject, artifact, mVariant.name)
+                // 直接子模块消费它自己的薄产物（AGP bundle 输出），不再消费子模块的最终 fat AAR
+                archiveLibrary.setAarFile(artifact.file)
+                archiveLibrary.setDirect(true)
                 Project embedProj = findEmbeddedProject(artifact)
                 if (embedProj != null && embedProj != mProject) {
                     archiveLibrary.setEmbedProject(embedProj)
                 }
                 addAndroidArchiveLibrary(archiveLibrary)
-                NestedEmbedNode nestedNode = findNestedNode(artifact)
-                final def zipFolder = archiveLibrary.getRootFolder()
-                zipFolder.mkdirs()
-                String taskName = "explode${archiveLibrary.getTaskKey()}${mVariant.name.capitalize()}"
-                Task explodeTask = mProject.tasks.create(taskName, Copy) {
-                    FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'explode')
-                    File inputAar = nestedNode == null ? artifact.file : nestedNode.finalAarFile
-                    doFirst {
-                        FatAarDiagnostics.recordArchive(mProject, mVariant.name, taskName, inputAar, nestedNode != null)
-                    }
-                    from mProject.zipTree(inputAar.absolutePath)
-                    into zipFolder
-                    // 显式声明输入/输出：子节点（嵌套 embed 的最终 aar）内容变化时必须重新解包，
-                    // 否则深层源码改动会被旧解包产物吞掉，并逐层传到顶层 fat aar。
-                    inputs.file(inputAar).withPathSensitivity(PathSensitivity.RELATIVE)
-                    outputs.dir(zipFolder)
-
-                    doFirst {
-                        // Delete previously extracted data.
-                        zipFolder.deleteDir()
-                        if (nestedNode != null) {
-                            verifyNestedAarOutput(nestedNode)
-                        }
-                    }
-                }
-
-                if (nestedNode != null) {
-                    explodeTask.dependsOn(nestedNode.reBundleTask)
-                } else {
-                    Set<Task> dependencies = getTaskDependencies(artifact)
-                    if (dependencies.isEmpty()) {
-                        explodeTask.dependsOn(prepareTask)
-                    } else {
-                        explodeTask.dependsOn(dependencies)
-                    }
-                }
-                Task javacTask = mVersionAdapter.getJavaCompileTask()
-                javacTask.dependsOn(explodeTask)
-                bundleTask.configure {
-                    dependsOn(explodeTask)
-                }
-                mExplodeTasks.add(explodeTask)
+                createExplodeTask(archiveLibrary, artifact.file, getTaskDependencies(artifact),
+                        prepareTask, true, bundleTask)
             }
         }
+    }
+
+    /**
+     * 把扁平列表里尚未由 processArtifacts 覆盖的深层节点解包出来，供 class 合并与 DataBinding 聚合使用。
+     * 深层节点不参与 sourceSet / Manifest / JNI 等非类内容合并：直接子模块的薄产物已含整棵子树。
+     */
+    private void processFlattenedEmbedNodes(TaskProvider<Task> bundleTask) {
+        mFlattenedEmbedNodes.each { FlattenedEmbedNode node ->
+            if (isAlreadyCollected(node)) {
+                return
+            }
+            AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(mProject, node.key,
+                    node.project.name, node.selection.variant.name, node.aarFile)
+            archiveLibrary.setDirect(false)
+            archiveLibrary.setEmbedProject(node.project)
+            addAndroidArchiveLibrary(archiveLibrary)
+            createExplodeTask(archiveLibrary, node.aarFile, [node.bundleTask.get()] as Set<Task>,
+                    null, false, bundleTask)
+        }
+    }
+
+    private boolean isAlreadyCollected(FlattenedEmbedNode node) {
+        String target = node.aarFile.absoluteFile.toPath().normalize().toString()
+        return mAndroidArchiveLibraries.any { AndroidArchiveLibrary library ->
+            library.aarFile != null &&
+                    library.aarFile.absoluteFile.toPath().normalize().toString() == target
+        }
+    }
+
+    /**
+     * @param gateVariantPipeline true 时保持对 javac / bundle 的既有门控（直接子模块参与本模块编译与打包）
+     */
+    private Task createExplodeTask(AndroidArchiveLibrary library,
+                                   File inputAar,
+                                   Collection<Task> dependencies,
+                                   TaskProvider<Task> prepareTask,
+                                   boolean gateVariantPipeline,
+                                   TaskProvider<Task> bundleTask) {
+        final File zipFolder = library.getRootFolder()
+        zipFolder.mkdirs()
+        String taskName = "explode${library.getTaskKey()}${mVariant.name.capitalize()}"
+        Task explodeTask = mProject.tasks.create(taskName, Copy) {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'explode')
+            doFirst {
+                FatAarDiagnostics.recordArchive(mProject, mVariant.name, taskName, inputAar, !library.isDirect())
+            }
+            from mProject.zipTree(inputAar.absolutePath)
+            into zipFolder
+            // 显式声明输入/输出：被嵌入归档内容变化时必须重新解包，
+            // 否则深层源码改动会被旧解包产物吞掉，并逐层传到顶层 fat aar。
+            inputs.file(inputAar).withPathSensitivity(PathSensitivity.RELATIVE)
+            outputs.dir(zipFolder)
+            doFirst {
+                // Delete previously extracted data.
+                zipFolder.deleteDir()
+                verifyEmbeddedAar(inputAar, library)
+            }
+        }
+        if (dependencies != null && !dependencies.isEmpty()) {
+            explodeTask.dependsOn(dependencies)
+        } else if (prepareTask != null) {
+            explodeTask.dependsOn(prepareTask)
+        }
+        if (gateVariantPipeline) {
+            mVersionAdapter.getJavaCompileTask().dependsOn(explodeTask)
+            bundleTask.configure {
+                dependsOn(explodeTask)
+            }
+        }
+        mExplodeTasks.add(explodeTask)
+        return explodeTask
     }
 
     /**
@@ -540,7 +547,7 @@ class VariantProcessor {
         }
 
         final List<File> inputManifests = new ArrayList<>()
-        for (archiveLibrary in mAndroidArchiveLibraries) {
+        for (archiveLibrary in getDirectLibraries()) {
             inputManifests.add(archiveLibrary.getManifest())
         }
 
@@ -567,14 +574,14 @@ class VariantProcessor {
             dependsOn(mVersionAdapter.getJavaCompileTask())
             mustRunAfter(syncLibTask)
 
-            inputs.files(mAndroidArchiveLibraries.stream().map { it.libsFolder }.collect())
+            inputs.files(getDirectLibraries().stream().map { it.libsFolder }.collect())
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
             def outputDir = mVersionAdapter.getLibsDirFile()
             outputs.dir(outputDir)
 
             doFirst {
-                ExplodedHelper.processLibsIntoLibs(mProject, mAndroidArchiveLibraries, mJarFiles, outputDir)
+                ExplodedHelper.processLibsIntoLibs(mProject, getDirectLibraries(), mJarFiles, outputDir)
             }
         }
         return task
@@ -623,7 +630,7 @@ class VariantProcessor {
         }
 
         syncLibTask.configure {
-            inputs.files(mAndroidArchiveLibraries.stream().map { it.libsFolder }.collect())
+            inputs.files(getDirectLibraries().stream().map { it.libsFolder }.collect())
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
         }
@@ -665,7 +672,7 @@ class VariantProcessor {
 
             mProject.android.sourceSets.each { DefaultAndroidSourceSet sourceSet ->
                 if (sourceSet.name == mVariant.name) {
-                    for (archiveLibrary in mAndroidArchiveLibraries) {
+                    for (archiveLibrary in getDirectLibraries()) {
                         FatUtils.logInfo("Merge resource，Library res：${archiveLibrary.resFolder}")
                         sourceSet.res.srcDir(archiveLibrary.resFolder)
                     }
@@ -689,7 +696,7 @@ class VariantProcessor {
         assetsTask.doFirst {
             mProject.android.sourceSets.each {
                 if (it.name == mVariant.name) {
-                    for (archiveLibrary in mAndroidArchiveLibraries) {
+                    for (archiveLibrary in getDirectLibraries()) {
                         if (archiveLibrary.assetsFolder != null && archiveLibrary.assetsFolder.exists()) {
                             FatUtils.logInfo("Merge assets，Library assets folder：${archiveLibrary.assetsFolder}")
                             it.assets.srcDir(archiveLibrary.assetsFolder)
@@ -714,7 +721,7 @@ class VariantProcessor {
             dependsOn(mExplodeTasks)
 
             doFirst {
-                for (archiveLibrary in mAndroidArchiveLibraries) {
+                for (archiveLibrary in getDirectLibraries()) {
                     if (archiveLibrary.jniFolder != null && archiveLibrary.jniFolder.exists()) {
                         mProject.android.sourceSets.each {
                             if (it.name == mVariant.name) {
@@ -741,7 +748,7 @@ class VariantProcessor {
             dependsOn(mExplodeTasks)
             doLast {
                 try {
-                    Collection<File> files = mAndroidArchiveLibraries.stream().map { it.proguardRules }.collect()
+                    Collection<File> files = getDirectLibraries().stream().map { it.proguardRules }.collect()
                     File of
                     if (outputFile instanceof File) {
                         of = outputFile
@@ -777,7 +784,7 @@ class VariantProcessor {
             dependsOn(mExplodeTasks)
             doLast {
                 try {
-                    Collection<File> files = mAndroidArchiveLibraries.stream().map { it.proguardRules }.collect()
+                    Collection<File> files = getDirectLibraries().stream().map { it.proguardRules }.collect()
                     File of
                     if (outputFile instanceof File) {
                         of = outputFile

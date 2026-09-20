@@ -26,8 +26,6 @@ class FatAarPlugin implements Plugin<Project> {
 
     private final Collection<Configuration> embedConfigurations = new ArrayList<>()
 
-    final Map<String, Collection<NestedEmbedNode>> nestedEmbedNodesByVariant = new LinkedHashMap<>()
-
     final Map<String, Collection<FlattenedEmbedNode>> flattenedEmbedNodesByVariant = new LinkedHashMap<>()
 
     @Override
@@ -87,9 +85,9 @@ class FatAarPlugin implements Plugin<Project> {
             }
 
             if (!artifacts.isEmpty()) {
-                Collection<NestedEmbedNode> nestedEmbedNodes =
-                        nestedEmbedNodesByVariant.get(variant.name) ?: Collections.emptyList()
-                def processor = new VariantProcessor(project, variant, embedProjectsMap, nestedEmbedNodes,
+                Collection<FlattenedEmbedNode> flattenedEmbedNodes =
+                        flattenedEmbedNodesByVariant.get(variant.name) ?: Collections.emptyList()
+                def processor = new VariantProcessor(project, variant, embedProjectsMap, flattenedEmbedNodes,
                         syntheticArtifactSelections)
                 processor.processVariant(artifacts, firstLevelDependencies)
             }
@@ -127,7 +125,7 @@ class FatAarPlugin implements Plugin<Project> {
             }.findAll { it != null }
             Set<FatAarPlugin> processed = new LinkedHashSet<>()
 
-            // Process every embedded child first so its reBundle task exists before validation.
+            // 先处理被 embed 的子模块：其变体选择与插件应用情况要先就绪，父模块的图校验才有一致视图
             plugins.each { processPluginAfterDependencies(it, processed, new LinkedHashSet<FatAarPlugin>()) }
         }
     }
@@ -154,9 +152,9 @@ class FatAarPlugin implements Plugin<Project> {
 
     private void validateNestedEmbedGraphs() {
         project.android.libraryVariants.all { variant ->
-            NestedEmbedGraph graph = new NestedEmbedGraphValidator(project, variant as LibraryVariant).validate()
-            nestedEmbedNodesByVariant.put(variant.name, graph.nestedNodes)
-            flattenedEmbedNodesByVariant.put(variant.name, graph.flattenedNodes)
+            Collection<FlattenedEmbedNode> flattened =
+                    new NestedEmbedGraphValidator(project, variant as LibraryVariant).validate()
+            flattenedEmbedNodesByVariant.put(variant.name, flattened)
         }
     }
 

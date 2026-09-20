@@ -3,17 +3,13 @@ package com.kezong.fataar
 import com.android.build.gradle.api.LibraryVariant
 import org.gradle.api.GradleException
 import org.gradle.api.Project
-import org.gradle.api.ProjectConfigurationException
-import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.tasks.TaskProvider
 
 class NestedEmbedGraphValidator {
 
     private final Project rootProject
     private final LibraryVariant rootVariant
-    private final Collection<NestedEmbedNode> nodes = new LinkedHashSet<>()
     private final Set<String> completed = new LinkedHashSet<>()
     private final Set<String> visitedEdges = new LinkedHashSet<>()
     private final Map<String, String> firstParentByNode = new LinkedHashMap<>()
@@ -27,10 +23,10 @@ class NestedEmbedGraphValidator {
         this.rootVariant = rootVariant
     }
 
-    NestedEmbedGraph validate() {
+    Collection<FlattenedEmbedNode> validate() {
         String rootKey = variantKey(rootProject, rootVariant)
         walk(rootProject, rootVariant, [rootKey])
-        return new NestedEmbedGraph(nodes, flattenedNodes)
+        return flattenedNodes
     }
 
     private void walk(Project parent, LibraryVariant requestedVariant, List<String> activePath) {
@@ -89,20 +85,6 @@ class NestedEmbedGraphValidator {
                     // 叶子模块自身没有 embed：它已是扁平节点，消费根会收集它的自有 class。
                     return
                 }
-                TaskProvider reBundleTask = findReBundleTask(child, selection.variant)
-                if (reBundleTask == null) {
-                    String names = childConfigurations.collect { it.name }.join(', ')
-                    String expectedTask = "reBundleAar${selection.variant.name.capitalize()}"
-                    File expectedFinal = finalAarFile(child, selection.variant, selection.outputFile)
-                    throw configurationException("Nested fat AAR cannot produce a final AAR: parent '${parent.path}', " +
-                            "child '${child.path}', requested variant '${requestedVariant.name}', " +
-                            "selected variant '${selection.variant.name}', configurations '${names}', " +
-                            "expected task '${expectedTask}', source AAR '${selection.outputFile.absolutePath}', " +
-                            "expected final AAR '${expectedFinal.absolutePath}'. Ensure the child module's nested AAR build " +
-                            "produces a final AAR; do not downgrade it to a thin AAR.")
-                }
-                nodes.add(new NestedEmbedNode(parent, child, requestedVariant.name, selection, reBundleTask,
-                        finalAarFile(child, selection.variant, selection.outputFile)))
                 if (completed.add(childKey)) {
                     walk(child, selection.variant, childPath)
                 }
@@ -127,24 +109,6 @@ class NestedEmbedGraphValidator {
                     "The same module would be merged twice into the ancestor fat AAR. " +
                     "Keep exactly one embed path to it and use compileOnly for the other parents.")
         }
-    }
-
-    private static File finalAarFile(Project project, LibraryVariant variant, File sourceAarFile) {
-        Task task = project.tasks.findByName("reBundleAar${variant.name.capitalize()}")
-        if (task != null && task.hasProperty('archiveFile')) {
-            try {
-                return task.archiveFile.get().asFile
-            } catch (Exception ignored) {
-                // The task may not have configured its archive property yet.
-            }
-        }
-        return DirectoryManager.getFinalAarFile(project, variant, sourceAarFile)
-    }
-
-    private static TaskProvider findReBundleTask(Project project, LibraryVariant variant) {
-        String taskName = "reBundleAar${variant.name.capitalize()}"
-        Task task = project.tasks.findByName(taskName)
-        return task == null ? null : project.tasks.named(taskName)
     }
 
     private static String variantKey(Project project, LibraryVariant variant) {
