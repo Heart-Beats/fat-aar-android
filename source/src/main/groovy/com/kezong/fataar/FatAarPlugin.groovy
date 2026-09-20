@@ -37,6 +37,7 @@ class FatAarPlugin implements Plugin<Project> {
         checkAndroidPlugin()
         FatUtils.attach(project)
         DirectoryManager.attach(project)
+        FatAarDiagnostics.attach(project)
         project.extensions.create(FatAarExtension.NAME, FatAarExtension)
         createConfigurations()
         registerTransform()

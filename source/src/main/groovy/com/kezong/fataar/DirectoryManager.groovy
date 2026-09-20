@@ -43,6 +43,10 @@ class DirectoryManager {
         return project.file("${project.buildDir}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/merge_classes/${variant.name}")
     }
 
+    static File getMergedClassesDirectory(Project project, LibraryVariant variant) {
+        return project.file("${project.buildDir}/intermediates/${INTERMEDIATES_TEMP_FOLDER}/merged-classes/${variant.name}")
+    }
+
     static File getKotlinMetaDirectory(Project project, LibraryVariant variant) {
         return project.file("${project.buildDir}/tmp/kotlin-classes/${variant.name}/META-INF")
     }

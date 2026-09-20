@@ -70,6 +70,22 @@ dependencies {
 ```
 最终合并产物位于 `build/outputs/fat-aar/<variant>/`，与 AGP 生成的原始 source AAR 分离，并会在日志中打印其路径。
 
+### 构建性能诊断
+
+需要分析 fat AAR 构建耗时时，可临时开启只读诊断：
+
+```shell script
+./gradlew :lib-main:assembleFlavor1Debug -PfataarDiagnostics=true
+```
+
+诊断报告写入每个启用插件的模块目录 `build/intermediates/fat-aar/diagnostics/<variant>.json`，包含各阶段任务耗时、是否命中 `UP-TO-DATE`、嵌入 AAR 的大小等信息。默认不开启诊断，不会注册监听器，也不会改变任务输入、输出、执行顺序或最终归档内容。
+
+诊断本身也必须可被扣除成本，因此：
+
+- `mergeClasses` 被拆为 `mergeClasses.cleanup`、`mergeClasses.merge.unpackClassesJar`、`mergeClasses.merge.copyToJavac`、`mergeClasses.merge.writeIndex` 与总计 `mergeClasses.merge`；产物体积与类数在同一次索引遍历中顺带统计，不会为诊断额外遍历产物目录。
+- 归档默认只读 zip 中央目录（代价与归档大小无关）。需要 `classes.jar` 的类数时再追加 `-PfataarDiagnosticsDeep=true`：该模式会解压每个 `classes.jar` 统计类数，代价与归档内容成正比。
+- 每条归档记录带 `scanMillis`，用于把扫描自身耗时从 `explode` 任务时长里扣除。
+
 ### 多级依赖
 
 #### 本地依赖

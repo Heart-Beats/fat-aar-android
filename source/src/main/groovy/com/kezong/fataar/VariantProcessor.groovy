@@ -5,6 +5,7 @@ import com.android.build.gradle.internal.api.DefaultAndroidSourceSet
 import com.android.build.gradle.tasks.ManifestProcessorTask
 import com.kezong.fataar.tasks.MergeDataBindingMetadataTask
 import com.kezong.fataar.tasks.MergeEmbedServicesAndKotlinTask
+import com.kezong.fataar.tasks.MergeEmbeddedClassesTask
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -20,9 +21,6 @@ import org.gradle.api.tasks.TaskDependency
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.Zip
 
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 /**
  * Core
  * Processor for variant
@@ -41,10 +39,11 @@ class VariantProcessor {
 
     private VersionAdapter mVersionAdapter
 
-    private TaskProvider mMergeClassTask
-    private File mMergedClassesIndex
+    private TaskProvider mFinalClassesJar
 
     private TaskProvider mUnpackBundleTask
+
+    private TaskProvider mReBundleTask
 
     private TaskProvider mRJarTask
 
@@ -84,11 +83,13 @@ class VariantProcessor {
             throw new RuntimeException("Can not find task ${taskPath}!")
         }
         TaskProvider bundleTask = VersionAdapter.getBundleTaskProvider(mProject, mVariant.name)
+        // unpackBundleAar / reBundleAar 必须在类合并之前创建：
+        // 归档级类合并的输入正是本模块薄产物解包后的 classes.jar。
+        mReBundleTask = configureReBundleAarTask(bundleTask)
         preEmbed(artifacts, dependencies, prepareTask)
         processArtifacts(artifacts, prepareTask, bundleTask)
         processClassesAndJars(bundleTask)
         if (mAndroidArchiveLibraries.isEmpty()) {
-            configureReBundleAarTask(bundleTask)
             return
         }
         processManifest()
@@ -148,6 +149,7 @@ class VariantProcessor {
                           Collection<ResolvedDependency> dependencies,
                           TaskProvider prepareTask) {
         TaskProvider embedTask = mProject.tasks.register("pre${mVariant.name.capitalize()}Embed") {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'preEmbed')
             doFirst {
                 printEmbedArtifacts(artifacts, dependencies)
             }
@@ -165,6 +167,7 @@ class VariantProcessor {
         String variantName = mVariant.name.capitalize()
 
         mUnpackBundleTask = mProject.tasks.register("unpackBundleAar${variantName}", Sync.class) {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'unpackBundleAar')
             it.dependsOn(bundleTask)
             it.from mProject.zipTree(sourceAar)
             it.into reBundleDir
@@ -183,6 +186,7 @@ class VariantProcessor {
 
         String taskName = "reBundleAar${variantName}"
         TaskProvider task = mProject.getTasks().register(taskName, Zip.class) {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'reBundleAar')
             it.dependsOn(mUnpackBundleTask)
             it.from reBundleDir
             it.include "**"
@@ -223,18 +227,10 @@ class VariantProcessor {
         return new File(task.destinationDir, task.archiveName)
     }
 
-    /** 注入索引文件（路径确定，可安全用于 inputs.file 声明） */
-    private File mergedClassesIndexFile() {
-        File mergeDir = DirectoryManager.getMergeClassDirectory(mProject, mVariant)
-        return new File(mergeDir.parentFile, "merged-classes-${mVariant.name}.index")
-    }
-
     private void processRClasses(RClassesTransform transform, TaskProvider<Task> bundleTask) {
-        TaskProvider reBundleTask = configureReBundleAarTask(bundleTask)
+        TaskProvider reBundleTask = mReBundleTask
         TaskProvider transformTask = mProject.tasks.named("transformClassesWith${transform.name.capitalize()}For${mVariant.name.capitalize()}")
-        transformTask.configure {
-            it.dependsOn(mMergeClassTask)
-        }
+        FatAarDiagnostics.markTask(mProject, transformTask, mVariant.name, 'transformR')
         if (mProject.fataar.transformR) {
             transformRClasses(transform, transformTask, bundleTask, reBundleTask)
         } else {
@@ -305,6 +301,7 @@ class VariantProcessor {
         metadataRoots.addAll(mAndroidArchiveLibraries.collect { it.rootFolder })
 
         def mergeDbMetadataTask = mProject.tasks.register("mergeDataBindingMetadata${variantName}", MergeDataBindingMetadataTask) {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'dataBinding')
             it.variant = mVariant
             it.metadataRoots = metadataRoots
             it.mergedDbBaseDir = mergedDbBaseDir
@@ -343,6 +340,7 @@ class VariantProcessor {
         Collection<File> embeddedRoots = mAndroidArchiveLibraries.collect { it.rootFolder }
         Collection<File> serviceSourceDirectories = getLocalServiceSourceDirectories()
         def mergeServiceAndKotlinTask = mProject.tasks.register("mergeEmbedServicesAndKotlin${variantName}", MergeEmbedServicesAndKotlinTask) {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'servicesAndKotlin')
             it.variant = mVariant
             it.embeddedAarRoots = embeddedRoots
             it.localServiceSourceDirectories = serviceSourceDirectories
@@ -532,7 +530,11 @@ class VariantProcessor {
                 def name = artifact.name.capitalize()
                 String taskName = "explode${group}${name}${mVariant.name.capitalize()}"
                 Task explodeTask = mProject.tasks.create(taskName, Copy) {
+                    FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'explode')
                     File inputAar = nestedNode == null ? artifact.file : nestedNode.finalAarFile
+                    doFirst {
+                        FatAarDiagnostics.recordArchive(mProject, mVariant.name, taskName, inputAar, nestedNode != null)
+                    }
                     from mProject.zipTree(inputAar.absolutePath)
                     into zipFolder
                     // 显式声明输入/输出：子节点（嵌套 embed 的最终 aar）内容变化时必须重新解包，
@@ -605,92 +607,9 @@ class VariantProcessor {
         }
     }
 
-    private TaskProvider handleClassesMergeTask(final boolean isMinifyEnabled) {
-        final TaskProvider task = mProject.tasks.register("mergeClasses" + mVariant.name.capitalize()) {
-            dependsOn(mExplodeTasks)
-            dependsOn(mVersionAdapter.getJavaCompileTask())
-            try {
-                // main lib maybe not use kotlin
-                TaskProvider kotlinCompile = mProject.tasks.named("compile${mVariant.name.capitalize()}Kotlin")
-                if (kotlinCompile != null) {
-                    dependsOn(kotlinCompile)
-                }
-            } catch(Exception ignore) {
-
-            }
-
-            inputs.files(mAndroidArchiveLibraries.stream().map { it.classesJarFile }.collect())
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-            if (isMinifyEnabled) {
-                inputs.files(mAndroidArchiveLibraries.stream().map { it.localJars }.collect())
-                        .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
-            }
-            File outputDir = DirectoryManager.getMergeClassDirectory(mProject, mVariant)
-            File javacDir = mVersionAdapter.getClassPathDirFiles().first()
-            outputs.dir(outputDir)
-            // 注入索引：记录「本次注入到 javac 目录的类」及其内容哈希。
-            // 作用一（幂等）：下次注入前按索引精确删除上次注入的文件，避免上游删类后的残留；
-            // 作用二（可跟踪）：作为本任务输出、并被下游打包任务作为输入，内容变化即触发重新打包。
-            mMergedClassesIndex = mergedClassesIndexFile()
-            outputs.file(mMergedClassesIndex)
-
-            doFirst {
-                // 幂等：先按上次的注入索引，把上次注入到 javac 目录的文件删干净（含已从产物中移除的类）
-                if (mMergedClassesIndex != null && mMergedClassesIndex.exists()) {
-                    mMergedClassesIndex.eachLine { String line ->
-                        int sep = line.indexOf(' ')
-                        if (sep > 0) {
-                            File injected = new File(javacDir, line.substring(sep + 1))
-                            if (injected.exists()) {
-                                injected.delete()
-                            }
-                        }
-                    }
-                }
-                // Extract relative paths and delete previous output.
-                def pathsToDelete = new ArrayList<Path>()
-                mProject.fileTree(outputDir).forEach {
-                    pathsToDelete.add(Paths.get(outputDir.absolutePath).relativize(Paths.get(it.absolutePath)))
-                }
-                outputDir.deleteDir()
-                // Delete output files from javac dir.
-                pathsToDelete.forEach {
-                    Files.deleteIfExists(Paths.get("$javacDir.absolutePath/${it.toString()}"))
-                }
-            }
-
-            doLast {
-                ExplodedHelper.processClassesJarInfoClasses(mProject, mAndroidArchiveLibraries, outputDir)
-                if (isMinifyEnabled) {
-                    ExplodedHelper.processLibsIntoClasses(mProject, mAndroidArchiveLibraries, mJarFiles, outputDir)
-                }
-
-                mProject.copy {
-                    from outputDir
-                    into javacDir
-                    exclude 'META-INF/'
-                }
-                // 写注入索引：<sha1> <相对路径>（按路径排序，保证内容确定）
-                def digest = java.security.MessageDigest.getInstance("SHA-1")
-                def indexLines = []
-                mProject.fileTree(outputDir).forEach { File f ->
-                    if (f.isFile() && f.name.endsWith(".class")) {
-                        String rel = outputDir.toPath().relativize(f.toPath()).toString().replace('\\', '/')
-                        byte[] hash = digest.digest(f.bytes)
-                        digest.reset()
-                        indexLines.add(hash.encodeHex().toString() + " " + rel)
-                    }
-                }
-                indexLines.sort()
-                mMergedClassesIndex.text = indexLines.join(System.lineSeparator())
-            }
-        }
-        return task
-    }
-
     private TaskProvider handleJarMergeTask(final TaskProvider syncLibTask) {
         final TaskProvider task = mProject.tasks.register("mergeJars" + mVariant.name.capitalize()) {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'mergeJars')
             dependsOn(mExplodeTasks)
             dependsOn(mVersionAdapter.getJavaCompileTask())
             mustRunAfter(syncLibTask)
@@ -715,34 +634,30 @@ class VariantProcessor {
         boolean isMinifyEnabled = mVariant.getBuildType().isMinifyEnabled()
 
         TaskProvider syncLibTask = mProject.tasks.named(mVersionAdapter.getSyncLibJarsTaskPath())
-        TaskProvider extractAnnotationsTask = mProject.tasks.named("extract${mVariant.name.capitalize()}Annotations")
+        File reBundleDir = DirectoryManager.getReBundleDirectory(mProject, mVariant)
+        File ownClassesJar = new File(reBundleDir, "classes.jar")
+        File mergedClassesDir = DirectoryManager.getMergedClassesDirectory(mProject, mVariant)
 
-        mMergeClassTask = handleClassesMergeTask(isMinifyEnabled)
-        // ===== 根治：类合并会把子模块类注入本模块的 javac 输出目录 =====
-        // 凡「产出 classes.jar / aar」的任务都必须排在类合并之后执行，否则产物可能基于注入前的类集合
-        // （表现为改了源码但 aar 里仍是旧类），并在嵌套 embed 下把旧类逐层传播到顶层 fat aar。
-        bundleTask.configure {
-            dependsOn(mMergeClassTask)
-            mustRunAfter(mMergeClassTask)
-        }
-        ['bundleLibRuntimeToJar', 'bundleLibCompileToJar'].each { prefix ->
-            def packagingTask = mProject.tasks.findByName(prefix + mVariant.name.capitalize())
-            if (packagingTask != null) {
-                packagingTask.mustRunAfter(mMergeClassTask)
-                packagingTask.inputs.file(mergedClassesIndexFile()).withPathSensitivity(PathSensitivity.RELATIVE)
+        mFinalClassesJar = mProject.tasks.register("mergeEmbeddedClasses${mVariant.name.capitalize()}",
+                MergeEmbeddedClassesTask) {
+            FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'mergeEmbeddedClasses')
+            it.dependsOn(mUnpackBundleTask)
+            it.dependsOn(mExplodeTasks)
+            it.ownClassesJar = ownClassesJar
+            it.embeddedClassesJars = mAndroidArchiveLibraries.collect { it.classesJarFile } as Set<File>
+            if (isMinifyEnabled) {
+                Set<File> extra = new LinkedHashSet<>()
+                mAndroidArchiveLibraries.each { extra.addAll(it.localJars) }
+                extra.addAll(mJarFiles)
+                it.extraClassesJars = extra
             }
+            it.outputJar = new File(mergedClassesDir, "merged-classes.jar")
         }
-        bundleTask.configure {
-            it.inputs.file(mergedClassesIndexFile()).withPathSensitivity(PathSensitivity.RELATIVE)
-        }
+
         syncLibTask.configure {
-            dependsOn(mMergeClassTask)
             inputs.files(mAndroidArchiveLibraries.stream().map { it.libsFolder }.collect())
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
-        }
-        extractAnnotationsTask.configure {
-            mustRunAfter(mMergeClassTask)
         }
 
         if (!isMinifyEnabled) {
