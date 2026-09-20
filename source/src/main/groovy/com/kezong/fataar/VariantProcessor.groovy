@@ -188,8 +188,11 @@ class VariantProcessor {
         TaskProvider task = mProject.getTasks().register(taskName, Zip.class) {
             FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'reBundleAar')
             it.dependsOn(mUnpackBundleTask)
-            it.from reBundleDir
-            it.include "**"
+            it.from(reBundleDir) {
+                it.include "**"
+                // classes.jar 由归档级合并 + 单遍 R 改写产出，不再使用 AGP 薄产物里的版本
+                it.exclude "classes.jar"
+            }
 
             try {
                 def strategyClass = Class.forName("org.gradle.api.file.DuplicatesStrategy")
@@ -625,6 +628,17 @@ class VariantProcessor {
             inputs.files(mAndroidArchiveLibraries.stream().map { it.libsFolder }.collect())
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
+        }
+
+        // 最终产物用「合并 + 单遍改写」后的 classes.jar 组装。
+        // 必须写在这里：此时 mFinalClassesJar 已赋值，flatMap 才能取到它的 outputJar。
+        mReBundleTask.configure {
+            dependsOn(mFinalClassesJar)
+            it.from(mFinalClassesJar.map { Task t -> t.outputJar }) { spec ->
+                spec.rename { 'classes.jar' }
+            }
+            it.inputs.file(mFinalClassesJar.map { Task t -> t.outputJar })
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
         }
 
         if (!isMinifyEnabled) {

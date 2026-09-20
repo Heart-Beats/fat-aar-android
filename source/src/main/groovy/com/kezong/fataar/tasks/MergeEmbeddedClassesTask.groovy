@@ -44,11 +44,12 @@ class MergeEmbeddedClassesTask extends DefaultTask {
         }
         Map<String, String> owners = new LinkedHashMap<>()
         Set<String> writtenNames = new LinkedHashSet<>()
+        List<String> duplicates = new ArrayList<>()
         outputJar.parentFile.mkdirs()
         ZipOutputStream output = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outputJar)))
         long copiedEntries = 0L
         try {
-            copiedEntries += copyJar(ownClassesJar, output, owners, writtenNames, false, false).written
+            copiedEntries += copyJar(ownClassesJar, output, owners, writtenNames, duplicates, false, false).written
             Set<File> embedded = (embeddedClassesJars ?: Collections.emptySet()) as LinkedHashSet<File>
             embedded.each { File jar ->
                 if (!jar.isFile()) {
@@ -56,7 +57,7 @@ class MergeEmbeddedClassesTask extends DefaultTask {
                     FatUtils.logInfo("[fat-aar][classes] skip archive without classes.jar: '${jar.absolutePath}'")
                     return
                 }
-                Map result = copyJar(jar, output, owners, writtenNames, true, true)
+                Map result = copyJar(jar, output, owners, writtenNames, duplicates, true, true)
                 copiedEntries += result.written
                 if (result.written == 0L && result.sourceClasses > 0L) {
                     throw new GradleException("Embedded archive contributed no class: '${jar.absolutePath}'. " +
@@ -66,7 +67,7 @@ class MergeEmbeddedClassesTask extends DefaultTask {
             }
             (extraClassesJars ?: Collections.emptySet()).each { File jar ->
                 if (jar.isFile()) {
-                    copiedEntries += copyJar(jar, output, owners, writtenNames, true, true).written
+                    copiedEntries += copyJar(jar, output, owners, writtenNames, duplicates, true, true).written
                 }
             }
         } finally {
@@ -76,6 +77,13 @@ class MergeEmbeddedClassesTask extends DefaultTask {
             throw new GradleException("Merged classes.jar is empty for '${ownClassesJar.absolutePath}' and " +
                     "${(embeddedClassesJars ?: Collections.emptySet()).size()} embedded archive(s).")
         }
+        if (!duplicates.isEmpty()) {
+            // 同一 class 出现在两个被嵌入的归档中：保留先到的一份，等价于原实现「后解包覆盖先解包」。
+            // 这不必然非法（同一个 aar 可以合法地以 project 与本地文件两种坐标同时被 embed），故只告警。
+            List<String> sample = duplicates.size() > 5 ? duplicates.subList(0, 5) : duplicates
+            FatUtils.logAnytime("[fat-aar][classes] ${duplicates.size()} duplicate class(es) kept from the first " +
+                    "archive, e.g. ${sample.join(', ')}")
+        }
         FatUtils.logAnytime("[fat-aar][classes] merged ${owners.size()} class(es), " +
                 "${copiedEntries} entr(ies) -> ${outputJar.absolutePath}")
     }
@@ -83,12 +91,13 @@ class MergeEmbeddedClassesTask extends DefaultTask {
     /**
      * @return written 写出的条目数；sourceClasses 源 jar 内的 .class 条目总数（含被判重的）
      */
-    private Map copyJar(File jar,
-                        ZipOutputStream output,
-                        Map<String, String> owners,
-                        Set<String> writtenNames,
-                        boolean excludeMetaInf,
-                        boolean strictDuplicates) {
+    Map copyJar(File jar,
+                ZipOutputStream output,
+                Map<String, String> owners,
+                Set<String> writtenNames,
+                List<String> duplicates,
+                boolean excludeMetaInf,
+                boolean strictDuplicates) {
         long written = 0L
         long sourceClasses = 0L
         ZipFile zip = new ZipFile(jar)
@@ -111,10 +120,7 @@ class MergeEmbeddedClassesTask extends DefaultTask {
                     String previous = owners.get(entry.name)
                     if (previous != null) {
                         if (strictDuplicates && previous != jar.absolutePath) {
-                            throw new GradleException("Duplicate class '${entry.name}' while merging embedded " +
-                                    "classes: '${previous}' and '${jar.absolutePath}'. The nested embed graph must " +
-                                    "contain each descendant exactly once; keep one embed path and use compileOnly " +
-                                    "for the other parents.")
+                            duplicates.add(entry.name + " (" + previous + " | " + jar.absolutePath + ")")
                         }
                         continue
                     }
