@@ -18,16 +18,19 @@ class NestedEmbedGraphValidator {
     private final Set<String> visitedEdges = new LinkedHashSet<>()
     private final Map<String, String> firstParentByNode = new LinkedHashMap<>()
     private final Map<String, List<String>> firstPathByNode = new LinkedHashMap<>()
+    private final Collection<FlattenedEmbedNode> flattenedNodes = new LinkedHashSet<>()
+    private final Map<String, String> selectedVariantByProject = new LinkedHashMap<>()
+    private final Map<String, List<String>> pathByProject = new LinkedHashMap<>()
 
     NestedEmbedGraphValidator(Project rootProject, LibraryVariant rootVariant) {
         this.rootProject = rootProject
         this.rootVariant = rootVariant
     }
 
-    Collection<NestedEmbedNode> validate() {
+    NestedEmbedGraph validate() {
         String rootKey = variantKey(rootProject, rootVariant)
         walk(rootProject, rootVariant, [rootKey])
-        return nodes
+        return new NestedEmbedGraph(nodes, flattenedNodes)
     }
 
     private void walk(Project parent, LibraryVariant requestedVariant, List<String> activePath) {
@@ -58,16 +61,7 @@ class NestedEmbedGraphValidator {
 
                 Collection<Configuration> childConfigurations =
                         FatAarPlugin.getNonEmptyApplicableEmbedConfigurations(child, selection.variant)
-                if (childConfigurations.isEmpty()) {
-                    // The child has no embeds of its own: it merges directly into this
-                    // parent's bundle as an ordinary embedded library. Register the path
-                    // anyway, so a leaf reached from two different parents within one
-                    // closure is reported as duplicated content instead of silently
-                    // being merged twice into the ancestor fat AAR.
-                    registerPath(parentKey, childKey, activePath)
-                    return
-                }
-                if (!child.plugins.hasPlugin('com.kezong.fat-aar')) {
+                if (!childConfigurations.isEmpty() && !child.plugins.hasPlugin('com.kezong.fat-aar')) {
                     String names = childConfigurations.collect { it.name }.join(', ')
                     throw configurationException("Invalid nested embed configuration: parent '${parent.path}', " +
                             "child '${child.path}', requested variant '${requestedVariant.name}', " +
@@ -75,24 +69,41 @@ class NestedEmbedGraphValidator {
                             "应用 com.kezong.fat-aar 或改用 implementation/api。")
                 }
 
+                List<String> childPath = new ArrayList<>(activePath)
+                childPath.add(childKey)
+                String previousVariant = selectedVariantByProject.get(child.path)
+                if (previousVariant != null && previousVariant != selection.variant.name) {
+                    throw configurationException("Nested embed selects conflicting variants for project " +
+                            "'${child.path}': '${pathByProject.get(child.path).join(' -> ')}' selects " +
+                            "'${previousVariant}', '${childPath.join(' -> ')}' selects '${selection.variant.name}'. " +
+                            "A flattened fat AAR can contain only one variant of each descendant.")
+                }
+
+                registerPath(parentKey, childKey, activePath)
+                // 每个后代各登记一次：消费根要收集它的自有 class（薄产物不含子树 class）
+                flattenedNodes.add(new FlattenedEmbedNode(child, requestedVariant, selection, parent == rootProject))
+                selectedVariantByProject.put(child.path, selection.variant.name)
+                pathByProject.put(child.path, childPath)
+
+                if (childConfigurations.isEmpty()) {
+                    // 叶子模块自身没有 embed：它已是扁平节点，消费根会收集它的自有 class。
+                    return
+                }
                 TaskProvider reBundleTask = findReBundleTask(child, selection.variant)
-                File finalAarFile = finalAarFile(child, selection.variant, selection.outputFile)
                 if (reBundleTask == null) {
                     String names = childConfigurations.collect { it.name }.join(', ')
                     String expectedTask = "reBundleAar${selection.variant.name.capitalize()}"
+                    File expectedFinal = finalAarFile(child, selection.variant, selection.outputFile)
                     throw configurationException("Nested fat AAR cannot produce a final AAR: parent '${parent.path}', " +
                             "child '${child.path}', requested variant '${requestedVariant.name}', " +
                             "selected variant '${selection.variant.name}', configurations '${names}', " +
                             "expected task '${expectedTask}', source AAR '${selection.outputFile.absolutePath}', " +
-                            "expected final AAR '${finalAarFile.absolutePath}'. Ensure the child module's nested AAR build produces " +
-                            "a final AAR; do not downgrade it to a thin AAR.")
+                            "expected final AAR '${expectedFinal.absolutePath}'. Ensure the child module's nested AAR build " +
+                            "produces a final AAR; do not downgrade it to a thin AAR.")
                 }
-                registerPath(parentKey, childKey, activePath)
-                nodes.add(new NestedEmbedNode(parent, child, requestedVariant.name, selection, reBundleTask, finalAarFile))
-
+                nodes.add(new NestedEmbedNode(parent, child, requestedVariant.name, selection, reBundleTask,
+                        finalAarFile(child, selection.variant, selection.outputFile)))
                 if (completed.add(childKey)) {
-                    List<String> childPath = new ArrayList<>(activePath)
-                    childPath.add(childKey)
                     walk(child, selection.variant, childPath)
                 }
             }

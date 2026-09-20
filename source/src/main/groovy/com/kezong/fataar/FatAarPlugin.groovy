@@ -28,6 +28,8 @@ class FatAarPlugin implements Plugin<Project> {
 
     final Map<String, Collection<NestedEmbedNode>> nestedEmbedNodesByVariant = new LinkedHashMap<>()
 
+    final Map<String, Collection<FlattenedEmbedNode>> flattenedEmbedNodesByVariant = new LinkedHashMap<>()
+
     @Override
     void apply(Project project) {
         this.project = project
@@ -152,8 +154,9 @@ class FatAarPlugin implements Plugin<Project> {
 
     private void validateNestedEmbedGraphs() {
         project.android.libraryVariants.all { variant ->
-            nestedEmbedNodesByVariant.put(variant.name,
-                    new NestedEmbedGraphValidator(project, variant as LibraryVariant).validate())
+            NestedEmbedGraph graph = new NestedEmbedGraphValidator(project, variant as LibraryVariant).validate()
+            nestedEmbedNodesByVariant.put(variant.name, graph.nestedNodes)
+            flattenedEmbedNodesByVariant.put(variant.name, graph.flattenedNodes)
         }
     }
 
