@@ -111,6 +111,31 @@ gradle.projectsEvaluated {
     registerNestedFatAarVerification('flavor1Debug')
     registerNestedFatAarVerification('flavor2Debug')
 
+    tasks.register('verifyNestedTaskRange') {
+        group = 'verification'
+        description = 'Asserts that consuming :lib-aar through :lib-main does not build descendant merge/rebundle tasks.'
+        dependsOn 'assembleFlavor1Debug'
+        doLast {
+            def forbiddenPrefixes = ['mergeEmbeddedClasses', 'rewriteRClasses', 'reBundleAar', 'mergeClasses', 'transformClassesWithTransformR']
+            def offenders = gradle.taskGraph.allTasks.findAll { task ->
+                (task.project.path == ':lib-aar' || task.project.path == ':lib-aar2') &&
+                        forbiddenPrefixes.any { task.name.startsWith(it) }
+            }
+            if (!offenders.isEmpty()) {
+                throw new GradleException("Nested consumption must not build descendant merge/rebundle tasks, " +
+                        "but found: ${offenders*.path.sort().join(', ')}. Each descendant's own assemble must be " +
+                        "the only entry point for its merge/rebundle tasks.")
+            }
+            def rootMerge = gradle.taskGraph.allTasks.findAll { task ->
+                task.project.path == ':lib-main' && task.name.startsWith('mergeEmbeddedClasses')
+            }
+            if (rootMerge.isEmpty()) {
+                throw new GradleException("Expected :lib-main to run mergeEmbeddedClasses for its flattened graph.")
+            }
+            println "[fat-aar][verify] task range OK; :lib-main merge tasks: ${rootMerge*.path.join(', ')}"
+        }
+    }
+
     def flavor1DebugReBundleTask = tasks.named('reBundleAarFlavor1Debug')
     tasks.register('syncVerifiedFatAarForApp', Copy) {
         group = 'verification'
