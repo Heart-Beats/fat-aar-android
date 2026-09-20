@@ -1,7 +1,6 @@
 package com.kezong.fataar;
 
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -19,7 +18,15 @@ public class AndroidArchiveLibrary {
 
     private final ResolvedArtifact mArtifact;
 
+    private final String mModuleKey;
+
+    private final String mName;
+
     private final String mVariantName;
+
+    private File mAarFile;
+
+    private boolean mDirect;
 
     private String mPackageName;
 
@@ -36,34 +43,51 @@ public class AndroidArchiveLibrary {
         }
         mProject = project;
         mArtifact = artifact;
+        mModuleKey = sanitize(artifact.getModuleVersion().getId().getGroup()
+                + "__" + artifact.getModuleVersion().getId().getName()
+                + "__" + artifact.getModuleVersion().getId().getVersion());
+        mName = artifact.getModuleVersion().getId().getName();
         mVariantName = variantName;
+        mAarFile = artifact.getFile();
+    }
+
+    /**
+     * 合成来源：扁平图里的深层节点没有 ResolvedArtifact，只有「项目 + 选中变体 + 薄产物」。
+     */
+    public AndroidArchiveLibrary(Project project, String moduleKey, String name, String variantName, File aarFile) {
+        mProject = project;
+        mArtifact = null;
+        mModuleKey = sanitize(moduleKey);
+        mName = name;
+        mVariantName = variantName;
+        mAarFile = aarFile;
+    }
+
+    private static String sanitize(String value) {
+        return value == null ? "unknown" : value.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 
     public Project getProject() {
         return mProject;
     }
 
-    public String getGroup() {
-        return mArtifact.getModuleVersion().getId().getGroup();
+    public String getModuleKey() {
+        return mModuleKey;
     }
 
     public String getName() {
-        return mArtifact.getModuleVersion().getId().getName();
+        return mName;
     }
 
-    public String getVersion() {
-        return mArtifact.getModuleVersion().getId().getVersion();
+    /** Gradle 任务名安全标识，用于 explode 任务命名。 */
+    public String getTaskKey() {
+        return mModuleKey.replaceAll("[^A-Za-z0-9]", "_");
     }
 
     public File getRootFolder() {
         File explodedRootDir = mProject.file(
                 mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
-        ModuleVersionIdentifier id = mArtifact.getModuleVersion().getId();
-        return mProject.file(explodedRootDir
-                + "/" + id.getGroup()
-                + "/" + id.getName()
-                + "/" + id.getVersion()
-                + "/" + mVariantName);
+        return mProject.file(explodedRootDir + "/" + mModuleKey + "/" + mVariantName);
     }
 
     public File getAidlFolder() {
@@ -145,6 +169,23 @@ public class AndroidArchiveLibrary {
 
     public File getDataBindingLogFolder() {
         return new File(getRootFolder(), "data-binding-base-class-log");
+    }
+
+    public File getAarFile() {
+        return mAarFile;
+    }
+
+    public void setAarFile(File aarFile) {
+        this.mAarFile = aarFile;
+    }
+
+    /** true 表示它是消费根的直接子模块：其薄产物已继承整棵子树的非类内容。 */
+    public boolean isDirect() {
+        return mDirect;
+    }
+
+    public void setDirect(boolean direct) {
+        this.mDirect = direct;
     }
 
     public Project getEmbedProject() {

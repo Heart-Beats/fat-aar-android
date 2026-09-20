@@ -481,9 +481,7 @@ class VariantProcessor {
                 NestedEmbedNode nestedNode = findNestedNode(artifact)
                 final def zipFolder = archiveLibrary.getRootFolder()
                 zipFolder.mkdirs()
-                def group = artifact.getModuleVersion().id.group.capitalize()
-                def name = artifact.name.capitalize()
-                String taskName = "explode${group}${name}${mVariant.name.capitalize()}"
+                String taskName = "explode${archiveLibrary.getTaskKey()}${mVariant.name.capitalize()}"
                 Task explodeTask = mProject.tasks.create(taskName, Copy) {
                     FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'explode')
                     File inputAar = nestedNode == null ? artifact.file : nestedNode.finalAarFile
