@@ -6,6 +6,7 @@ import com.android.build.gradle.tasks.ManifestProcessorTask
 import com.kezong.fataar.tasks.MergeDataBindingMetadataTask
 import com.kezong.fataar.tasks.MergeEmbedServicesAndKotlinTask
 import com.kezong.fataar.tasks.MergeEmbeddedClassesTask
+import com.kezong.fataar.tasks.RewriteRClassesTask
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -75,8 +76,7 @@ class VariantProcessor {
     }
 
     void processVariant(Collection<ResolvedArtifact> artifacts,
-                        Collection<ResolvableDependency> dependencies,
-                        RClassesTransform transform) {
+                        Collection<ResolvableDependency> dependencies) {
         String taskPath = 'pre' + mVariant.name.capitalize() + 'Build'
         TaskProvider prepareTask = mProject.tasks.named(taskPath)
         if (prepareTask == null) {
@@ -101,7 +101,7 @@ class VariantProcessor {
 
         processJavaResourcesHooks()
 
-        processRClasses(transform, bundleTask)
+        processRClasses(bundleTask)
 
         // 改造点 1：重构或增强原有的 DataBinding 处理（必须在 processRClasses 之后，因为需要 Hook reBundleAar 任务）
         processDataBinding()
@@ -227,60 +227,12 @@ class VariantProcessor {
         return new File(task.destinationDir, task.archiveName)
     }
 
-    private void processRClasses(RClassesTransform transform, TaskProvider<Task> bundleTask) {
-        TaskProvider reBundleTask = mReBundleTask
-        TaskProvider transformTask = mProject.tasks.named("transformClassesWith${transform.name.capitalize()}For${mVariant.name.capitalize()}")
-        FatAarDiagnostics.markTask(mProject, transformTask, mVariant.name, 'transformR')
+    private void processRClasses(TaskProvider<Task> bundleTask) {
         if (mProject.fataar.transformR) {
-            transformRClasses(transform, transformTask, bundleTask, reBundleTask)
-        } else {
-            generateRClasses(bundleTask, reBundleTask)
+            // R 改写已由 rewriteRClasses 在类合并阶段完成，无需 AGP Transform。
+            return
         }
-    }
-
-    private void transformRClasses(RClassesTransform transform, TaskProvider transformTask, TaskProvider bundleTask, TaskProvider reBundleTask) {
-        transform.putTargetPackage(mVariant.name, mVariant.getApplicationId())
-        transformTask.configure {
-            doFirst {
-                // 需改写的包 = 「会被打进本次 fat aar 的全部包」，而不是仅直接 embed 的库：
-                // 模块代码可合法引用编译期任意内部模块的 R（api 依赖链），这些引用同样必须改写到目标包，
-                // 否则最终 aar 只会有一个聚合 R，运行期将抛 NoClassDefFoundError: <pkg>.R$xxx。
-                transform.putLibraryPackages(mVariant.name, collectRepackagedPackages())
-            }
-        }
-        reBundleTask.configure {
-            dependsOn(transformTask)
-        }
-    }
-
-    /**
-     * 收集「会被打进本次 fat aar 的全部包名」：
-     * 1) 直接 embed 的 aar 包（兜底：保证合并类目录尚未产出时也可用）；
-     * 2) 合并（explode）后类目录下出现的所有包——覆盖嵌套 / 深层模块以及 embed 的本地 aar。
-     * 未 embed 的外部依赖不在该目录中，其 R 引用天然不会被改写（消费方会提供对应 R）。
-     */
-    private Collection<String> collectRepackagedPackages() {
-        Set<String> packages = new LinkedHashSet<>()
-        mAndroidArchiveLibraries.each { lib ->
-            String pkg = lib.packageName
-            if (pkg != null && !pkg.isEmpty()) {
-                packages.add(pkg)
-            }
-        }
-        File mergeDir = DirectoryManager.getMergeClassDirectory(mProject, mVariant)
-        if (mergeDir != null && mergeDir.exists()) {
-            mergeDir.eachFileRecurse { File f ->
-                if (f.isFile() && f.name.endsWith('.class')) {
-                    String rel = mergeDir.toPath().relativize(f.toPath()).toString().replace('\\', '/')
-                    int idx = rel.lastIndexOf('/')
-                    if (idx > 0) {
-                        packages.add(rel.substring(0, idx).replace('/', '.'))
-                    }
-                }
-            }
-        }
-        FatUtils.logAnytime('[fat-aar][R] repackaged packages of ' + mProject.path + ':' + mVariant.name + ' = ' + packages.size())
-        return packages
+        generateRClasses(bundleTask, mReBundleTask)
     }
 
     private void generateRClasses(TaskProvider<Task> bundleTask, TaskProvider<Task> reBundleTask) {
@@ -652,6 +604,21 @@ class VariantProcessor {
                 it.extraClassesJars = extra
             }
             it.outputJar = new File(mergedClassesDir, "merged-classes.jar")
+        }
+
+        if (mProject.fataar.transformR) {
+            TaskProvider mergeTask = mFinalClassesJar
+            mFinalClassesJar = mProject.tasks.register("rewriteRClasses${mVariant.name.capitalize()}",
+                    RewriteRClassesTask) {
+                FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'rewriteRClasses')
+                it.dependsOn(mergeTask)
+                it.mergedClassesJar = new File(mergedClassesDir, "merged-classes.jar")
+                it.targetPackage = mVariant.getApplicationId()
+                it.extraRepackagedPackages = mProject.provider {
+                    mAndroidArchiveLibraries.collect { it.packageName } as Set<String>
+                }
+                it.outputJar = new File(mergedClassesDir, "rewritten-classes.jar")
+            }
         }
 
         syncLibTask.configure {

@@ -4,7 +4,6 @@ import com.android.build.gradle.api.LibraryVariant
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.GradleException
-import org.gradle.api.ProjectConfigurationException
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.ResolvedArtifact
@@ -25,8 +24,6 @@ class FatAarPlugin implements Plugin<Project> {
 
     private Project project
 
-    private RClassesTransform transform
-
     private final Collection<Configuration> embedConfigurations = new ArrayList<>()
 
     final Map<String, Collection<NestedEmbedNode>> nestedEmbedNodesByVariant = new LinkedHashMap<>()
@@ -40,15 +37,8 @@ class FatAarPlugin implements Plugin<Project> {
         FatAarDiagnostics.attach(project)
         project.extensions.create(FatAarExtension.NAME, FatAarExtension)
         createConfigurations()
-        registerTransform()
         FatUtils.logAnytime("fat-aar plugin applied to project '${project.path}' (build: ${getBuildDateTime()})")
         registerProjectsEvaluatedHandler()
-    }
-
-    private registerTransform() {
-        transform = new RClassesTransform(project)
-        // register in project.afterEvaluate is invalid.
-        project.android.registerTransform(transform)
     }
 
     private static String getBuildDateTime() {
@@ -99,7 +89,7 @@ class FatAarPlugin implements Plugin<Project> {
                         nestedEmbedNodesByVariant.get(variant.name) ?: Collections.emptyList()
                 def processor = new VariantProcessor(project, variant, embedProjectsMap, nestedEmbedNodes,
                         syntheticArtifactSelections)
-                processor.processVariant(artifacts, firstLevelDependencies, transform)
+                processor.processVariant(artifacts, firstLevelDependencies)
             }
         }
     }

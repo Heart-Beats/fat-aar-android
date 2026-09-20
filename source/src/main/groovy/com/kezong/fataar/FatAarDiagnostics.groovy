@@ -279,6 +279,7 @@ class FatAarDiagnostics {
                     name.startsWith('rebundleaar') ||
                     name.startsWith('mergedatabindingmetadata') ||
                     name.startsWith('mergeembedservicesandkotlin') ||
+                    name.contains('rewriterclasses') ||
                     name.contains('transformr')
         }
 
@@ -297,6 +298,8 @@ class FatAarDiagnostics {
                 category = 'unpackBundleAar'
             } else if (name.startsWith('rebundleaar')) {
                 category = 'reBundleAar'
+            } else if (name.contains('rewriterclasses')) {
+                category = 'rewriteRClasses'
             } else if (name.contains('transformr')) {
                 category = 'transformR'
             } else if (name.startsWith('mergedatabindingmetadata')) {

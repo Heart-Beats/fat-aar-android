@@ -11,7 +11,8 @@ import org.gradle.jvm.tasks.Jar
 /**
  * Used to generate R classes
  * generate R File -> R Class -> R Jar -> unzip aar -> reBundle with R.jar
- * @deprecated Prefer {@code RClassesTransform}
+ * 仅在 {@code fataar.transformR = false} 时使用（Plan B）；默认路径是
+ * {@link com.kezong.fataar.tasks.RewriteRClassesTask} 的单遍 R 改写（Plan A）。
  */
 class RClassesGenerate {
 
