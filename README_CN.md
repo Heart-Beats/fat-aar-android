@@ -106,7 +106,14 @@ dependencies {
 }
 ```
 
-对于 `lib-main -> lib-aar -> lib-aar2`，`lib-aar` 会先生成自己的最终 fat AAR，`lib-main` 再消费该最终 AAR。因此最终 `lib-main` AAR 同时包含三层内容，并可递归扩展到更深层级。若子工程存在当前变体适用的 `embed*` 声明却没有应用插件，构建会在配置阶段失败；若该子工程应保持普通 Android Library，请改用 `implementation` 或 `api`。
+对于 `lib-main -> lib-aar -> lib-aar2`，`lib-main` 消费的是 `lib-aar` 的**薄产物**（AGP `bundle<Variant>Aar` 的输出），并在配置阶段展平整棵嵌套图、逐节点采集各模块**自有**的 class。因此最终 `lib-main` AAR 同样包含三层内容，并可递归扩展到更深层级。若子工程存在当前变体适用的 `embed*` 声明却没有应用插件，构建会在配置阶段失败；若该子工程应保持普通 Android Library，请改用 `implementation` 或 `api`。
+
+嵌套 `embed` 的消费路径不依赖中间模块的最终产物：根模块在配置阶段展平整棵嵌套图，逐节点采集各模块**自有**的 class，并只做一次类合并与 R 改写。非类内容（资源、Manifest、JNI、consumer ProGuard、本地 jar、SPI 与 Kotlin metadata）仍由直接子模块的薄产物继承，因此不会重复。
+
+由此带来两点行为：
+
+- 构建根模块时不会触发中间模块的类合并与重打包任务；中间模块只有在自身被 `assemble` 或发布时才构建内容完整的最终 AAR。
+- 打包耗时不再随嵌套深度线性放大。
 
 最终 fat AAR 位于 `build/outputs/fat-aar/<variant>/`，与 AGP 生成的原始 source AAR 分离。
 
