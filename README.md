@@ -89,6 +89,8 @@ Three consequences:
 - Packaging time no longer scales with nesting depth: the total amount of extracted content equals the sum of every node's own content.
 - A module's thin AAR depends on whether that module is the consuming root for the current build. The plugin cleans up leftover exploded content for non-root modules automatically, so assembling an intermediate module and then building an ancestor will not mix stale content in.
 
+Regression check: `cd example && ./gradlew :verifyIncrementalFreshness` injects and then removes code/resource probes in descendant modules, running one **non-clean** incremental build each time, and asserts the root artifact stays in sync both ways (catching both "edit has no effect" and "deleted content lingers").
+
 The final fat AAR is written to `build/outputs/fat-aar/<variant>/`, separate from AGP's source AAR.
 
 #### Remote Dependency

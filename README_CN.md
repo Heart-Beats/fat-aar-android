@@ -116,6 +116,8 @@ dependencies {
 - 打包耗时不再随嵌套深度线性放大：解压总量等于全图各节点自有内容之和。
 - 同一模块的薄产物内容取决于「本次构建是否把它当作消费根」。插件会自动清理非消费根模块遗留的解压产物，因此「先单独 assemble 中间模块、再构建上层模块」不会串味。
 
+回归验证：`cd example && ./gradlew :verifyIncrementalFreshness` 会注入再移除后代模块的代码与资源探针，各做一次**不 clean** 的增量构建，断言根产物双向同步（既防「改了不生效」，也防「删了还在」）。
+
 最终 fat AAR 位于 `build/outputs/fat-aar/<variant>/`，与 AGP 生成的原始 source AAR 分离。
 
 #### 远程依赖

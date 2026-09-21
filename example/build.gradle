@@ -123,3 +123,17 @@ ext.verifyFatAarArchive = { File aarFile, Map expected ->
         }
     }
 }
+
+// ============================================================================
+// 增量新鲜度回归：注入/移除后代模块的代码与资源探针后各做一次「不 clean」的增量构建，
+// 断言根模块最终产物双向同步（防「改了不生效」与「删了还在」）。
+// 逻辑见 verify-incremental-freshness.sh；该脚本自身会调用 gradlew 完成两轮构建。
+// ============================================================================
+tasks.register('verifyIncrementalFreshness', Exec) {
+    group = 'verification'
+    description = '断言非根模块的代码/资源修改在增量构建中双向同步到根 fat AAR'
+    workingDir rootDir
+    boolean isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+    commandLine(isWindows ? ['cmd', '/c', 'bash', 'verify-incremental-freshness.sh']
+            : ['bash', 'verify-incremental-freshness.sh'])
+}
