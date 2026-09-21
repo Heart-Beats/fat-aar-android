@@ -92,6 +92,9 @@ def registerNestedFatAarVerification = { String variantName ->
                             'com/kezong/demo/libaar/AarLibClass.class',
                             'com/kezong/demo/libaar2/Aar2LibClass.class',
                             'com/kezong/demo/libaar2/NestedEmbedKotlinMarker.class',
+                            // 由中间模块 :lib-aar 声明的原生 AAR（:lib-aar-local）必须被根展平合并；
+                            // 这条断言是「后代声明的原生/远程产物不再逐层传递」这一回归的守卫。
+                            'com/kezong/demo/libaarlocal/AarLocalLibClass.class',
                     ],
                     serviceEntry    : 'META-INF/services/com.kezong.demo.spi.NestedEmbedService',
                     serviceProviders: [
@@ -166,8 +169,7 @@ dependencies {
     embed project(path: ':lib-java', configuration: 'default')
     // aar dependency
     embed project(path: ':lib-aar', configuration: 'default')
-    // local full aar dependency, just build in flavor1
-    flavor1Embed project(path: ':lib-aar-local', configuration: 'default')
+    // 原生 AAR 模块改由中间模块声明（覆盖「后代声明的原生/远程产物由根展平收集」这条路径）
     // local full aar dependency, just build in debug
     debugEmbed (name:'lib-aar-local2', ext:'aar')
     // remote dependency

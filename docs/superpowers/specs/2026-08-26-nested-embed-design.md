@@ -40,7 +40,7 @@ dependencies {
 | `explode` | 107.7 s / 63 次 |
 | `mergeClasses.cleanup` | 0.0 s（57.4 s 是增量构建专属开销，全量下无索引可删） |
 
-嵌套链逐层明细：
+嵌套链逐层明细（层级自底向上编号，仅保留规模数据）：
 
 | 层级 | 耗时 | 消费的输入 AAR |
 | --- | --- | --- |
@@ -87,6 +87,8 @@ dependencies {
 > 该不变式成立的前提是：模块只有在「本次构建把它当作消费根」时才展平子树（解压各节点、注入非类内容、合并 class、改写 R）。作为中间模块参与上层构建时，它不解压任何后代，其薄产物因而天然只含自身内容；上层消费根会直接从各节点自身取用。非类内容的注入（AGP sourceSet、Manifest 合并、consumer ProGuard 合并、`process<Variant>JavaRes`）在消费根改为遍历**全图节点**。
 >
 > 消费根由任务图判定：`<module>:reBundleAar<Variant>` 在本次构建的任务图中即为消费根。全量 `assemble` 时所有模块都在图中，退化为逐层合并（正确但慢）；显式指定聚合模块时只有它命中。
+>
+> **扁平图的节点包含两类**：① Android library project（`FlattenedEmbedNode`，按 project + 选中变体去重）；② 各节点声明的**产物级**依赖——原生 AAR 模块、远程 AAR/JAR（`FlattenedEmbedArtifact`，按 `group:name` 去重，冲突时保留先到的一份并告警）。第 ② 类既不是 Android project、也不属于消费根自己的 embed 声明，必须逐节点收集；否则扁平化后没有任何一层会把它们合进最终产物。
 
 这条不变式是整个改造的地基：它让"根模块只解压直接子模块就拿到整棵子树的非类内容"，同时"根模块从全图每个节点各取一次自有 class"。
 
@@ -126,6 +128,7 @@ dependencies {
 | `libs/*.jar` | 全图每个节点各一次 | 同上 |
 | `META-INF/services/*`、`META-INF/*.kotlin_module` | 全图每个节点各一次 | 各节点自有条目在消费根合并（services 按行拼接并去重） |
 | `R.txt` 符号 / 聚合 R | 全图每个节点各一次 | 符号来自消费根已注入的各节点 res |
+| 后代声明的**原生 AAR / 远程 AAR / JAR** 的 class 与非类内容 | 全图每个节点**声明的产物**各一次 | 它们不是 Android library project，无法作为 project 节点展平；不逐节点收集就会随「中间模块不再逐层合并」而从最终产物消失（表现为宿主编译期找不到这些 SDK 的类） |
 
 ## 类合并与 R 改写
 
@@ -270,6 +273,8 @@ AGP `Transform` 不再参与打包路径；R 改写成为普通任务，输入�
 | 「不在根项目扁平化整个项目图」 | 改为「class 与 DataBinding 在消费端扁平，非类内容分层」 | 中间 4 层输入体积几乎不变（171.5 → 177.4 MB） |
 | class 与 DataBinding 在消费端扁平，非类内容沿直接子模块分层继承（2026-09-18） | **非类内容同样在消费端扁平**；模块仅在本次构建把它当作消费根时才展平子树，中间模块只产出仅含自身内容的薄产物（2026-09-21） | 分层继承迫使每个中间模块解压整棵子树：explode 798.3 s / 222 次，占 fat-aar 耗时的 95%，深层节点解压内容 97% 被直接丢弃（4500 MB → 141 MB） |
 | 消费根判定需在配置期完成 | 用执行期任务图判定（`reBundleAar` 是否在图中），非根模块 `onlyIf` 跳过解压 + 总会执行的 reset 任务清理遗留解压产物 | `from(Closure)` 在任务图构建期求值，彼时 taskGraph 尚未填充；而残留解压产物会被 res/jniLibs 的存在性判断沿用，导致切换根/非根时不 clean 就串味 |
+| 扁平图只包含 Android library project 节点 | 扁平图同时包含**各节点声明的产物级依赖**（原生 AAR 模块 / 远程 AAR / JAR） | 真实工程接入后宿主编译失败：若干类的父类型来自「某中间模块以 `artifacts.add` 挂载的原生 AAR」（该模块无 android 插件，仅发布一个 aar 文件）。这类依赖不是 Android project，逐层合并取消后无人收集 |
+| `it.transitive = true` 在 `doAfterEvaluate` 中设置 | 提前到 `validateNestedEmbedGraphs` 之前 | 图校验会解析各节点的 embed 配置以收集产物级依赖；配置一旦解析就不能再改 `transitive`，否则报 `Cannot change dependencies ... after it has been resolved` |
 
 ## 文档更新
 

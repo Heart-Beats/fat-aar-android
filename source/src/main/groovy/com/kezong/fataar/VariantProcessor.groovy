@@ -52,18 +52,22 @@ class VariantProcessor {
 
     private Collection<FlattenedEmbedNode> mFlattenedEmbedNodes
 
+    private Collection<FlattenedEmbedArtifact> mFlattenedEmbedArtifacts
+
     private Map<String, SelectedVariantArtifact> mSyntheticArtifactSelections
 
     VariantProcessor(Project project,
                      LibraryVariant variant,
                      Map<String, Project> embedProjectsMap,
                      Collection<FlattenedEmbedNode> flattenedEmbedNodes = Collections.emptyList(),
+                     Collection<FlattenedEmbedArtifact> flattenedEmbedArtifacts = Collections.emptyList(),
                      Map<String, SelectedVariantArtifact> syntheticArtifactSelections = Collections.emptyMap()) {
         mProject = project
         mVariant = variant
         mVersionAdapter = new VersionAdapter(project, variant)
         mEmbedProjectsMap = embedProjectsMap ?: Collections.emptyMap()
         mFlattenedEmbedNodes = flattenedEmbedNodes ?: Collections.emptyList()
+        mFlattenedEmbedArtifacts = flattenedEmbedArtifacts ?: Collections.emptyList()
         mSyntheticArtifactSelections = syntheticArtifactSelections ?: Collections.emptyMap()
     }
 
@@ -90,6 +94,8 @@ class VariantProcessor {
         processArtifacts(artifacts, prepareTask, bundleTask)
         // 扁平图里的每个节点各贡献一份自有内容；非根模块的后代不会被解包，其目录不存在因而自然不参与
         processFlattenedEmbedNodes(bundleTask)
+        // 全图各节点声明的原生 AAR / 远程 AAR / JAR 同样由本模块展平收集
+        processFlattenedEmbedArtifacts(bundleTask)
         // 非消费根时必须清掉上一轮遗留的解压产物，否则会串味（见 createResetExplodedAarsTask）
         createResetExplodedAarsTask()
         processClassesAndJars(bundleTask)
@@ -474,10 +480,48 @@ class VariantProcessor {
     }
 
     private boolean isAlreadyCollected(FlattenedEmbedNode node) {
-        String target = node.aarFile.absoluteFile.toPath().normalize().toString()
+        return isArtifactCollected(node.aarFile)
+    }
+
+    private boolean isArtifactCollected(File file) {
+        if (file == null) {
+            return false
+        }
+        String target = file.absoluteFile.toPath().normalize().toString()
         return mAndroidArchiveLibraries.any { AndroidArchiveLibrary library ->
             library.aarFile != null &&
                     library.aarFile.absoluteFile.toPath().normalize().toString() == target
+        }
+    }
+
+    /**
+     * 展平「产物级」节点：全图各节点声明的原生 AAR / 远程 AAR / JAR。
+     *
+     * 这些依赖既不是 Android library project、也不属于本模块自己的 embed 声明，
+     * 若不在此收集，扁平化后就没有任何一层会把它们合进最终产物。
+     */
+    private void processFlattenedEmbedArtifacts(TaskProvider<Task> bundleTask) {
+        mFlattenedEmbedArtifacts.each { FlattenedEmbedArtifact node ->
+            File file = node.file
+            if (node.jar) {
+                if (mJarFiles.any { it.absoluteFile == file.absoluteFile }) {
+                    return
+                }
+                addJarFile(file)
+                return
+            }
+            if (isArtifactCollected(file)) {
+                return
+            }
+            AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(mProject, node.storageKey,
+                    node.name, mVariant.name, file)
+            archiveLibrary.setDirect(false)
+            Project owner = node.owner
+            if (owner != null && owner != mProject) {
+                archiveLibrary.setEmbedProject(owner)
+            }
+            addAndroidArchiveLibrary(archiveLibrary)
+            createExplodeTask(archiveLibrary, file, getTaskDependencies(node.artifact), null, false, bundleTask)
         }
     }
 

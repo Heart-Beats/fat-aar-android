@@ -5,6 +5,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.artifacts.ResolvedArtifact
 
 class NestedEmbedGraphValidator {
 
@@ -17,6 +18,8 @@ class NestedEmbedGraphValidator {
     private final Collection<FlattenedEmbedNode> flattenedNodes = new LinkedHashSet<>()
     private final Map<String, String> selectedVariantByProject = new LinkedHashMap<>()
     private final Map<String, List<String>> pathByProject = new LinkedHashMap<>()
+    private final Collection<FlattenedEmbedArtifact> embeddedArtifacts = new LinkedHashSet<>()
+    private final Map<String, FlattenedEmbedArtifact> embeddedArtifactsByModule = new LinkedHashMap<>()
 
     NestedEmbedGraphValidator(Project rootProject, LibraryVariant rootVariant) {
         this.rootProject = rootProject
@@ -32,6 +35,9 @@ class NestedEmbedGraphValidator {
     private void walk(Project parent, LibraryVariant requestedVariant, List<String> activePath) {
         String parentKey = variantKey(parent, requestedVariant)
         FatAarPlugin.getApplicableEmbedConfigurations(parent, requestedVariant).each { configuration ->
+            // 本节点声明的「产物级」依赖（原生 AAR / 远程 AAR/JAR）与 project 节点一同扁平，
+            // 否则它们会随「中间模块不再逐层合并」而从最终产物里消失。
+            collectEmbeddedArtifacts(parent, configuration)
             configuration.dependencies.findAll { it instanceof ProjectDependency }.each { ProjectDependency dependency ->
                 Project child = dependency.dependencyProject
                 if (!child.plugins.hasPlugin('com.android.library')) {
@@ -90,6 +96,50 @@ class NestedEmbedGraphValidator {
                 }
             }
         }
+    }
+
+    /**
+     * 收集某个节点声明的「产物级」依赖：原生 AAR 模块（无 android 插件、仅用 artifacts.add 挂载 aar 的项目）、远程 AAR/JAR。
+     * Android library project 依赖不在此列——它们由 FlattenedEmbedNode 承担。
+     */
+    private void collectEmbeddedArtifacts(Project owner, Configuration configuration) {
+        Set<String> projectLibraryNames = new LinkedHashSet<>()
+        configuration.dependencies.findAll { it instanceof ProjectDependency }.each { ProjectDependency dependency ->
+            Project dependencyProject = dependency.dependencyProject
+            if (dependencyProject != null && dependencyProject.plugins.hasPlugin('com.android.library')) {
+                projectLibraryNames.add(dependency.name)
+            }
+        }
+
+        configuration.resolvedConfiguration.resolvedArtifacts.each { ResolvedArtifact artifact ->
+            String type = artifact.type
+            if (type != FatAarPlugin.ARTIFACT_TYPE_AAR && type != FatAarPlugin.ARTIFACT_TYPE_JAR) {
+                return
+            }
+            if (projectLibraryNames.contains(artifact.moduleVersion.id.name)) {
+                return
+            }
+            FlattenedEmbedArtifact node = new FlattenedEmbedArtifact(owner, artifact)
+            FlattenedEmbedArtifact previous = embeddedArtifactsByModule.get(node.moduleKey)
+            if (previous != null) {
+                if (normalizedPath(previous.file) != normalizedPath(node.file)) {
+                    FatUtils.logAnytime("[fat-aar][flatten] '${node.moduleKey}' 被多个节点以不同版本声明：" +
+                            "'${previous.file}'（${previous.owner.path}）与 '${node.file}'（${owner.path}），" +
+                            "保留先到的一份。请对齐版本，否则最终产物可能出现重复类/资源。")
+                }
+                return
+            }
+            embeddedArtifactsByModule.put(node.moduleKey, node)
+            embeddedArtifacts.add(node)
+        }
+    }
+
+    Collection<FlattenedEmbedArtifact> getEmbeddedArtifacts() {
+        return embeddedArtifacts
+    }
+
+    private static String normalizedPath(File file) {
+        return file == null ? '' : file.absoluteFile.toPath().normalize().toString()
     }
 
     private void registerPath(String parentKey, String childKey, List<String> activePath) {

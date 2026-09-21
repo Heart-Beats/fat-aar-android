@@ -28,6 +28,8 @@ class FatAarPlugin implements Plugin<Project> {
 
     final Map<String, Collection<FlattenedEmbedNode>> flattenedEmbedNodesByVariant = new LinkedHashMap<>()
 
+    final Map<String, Collection<FlattenedEmbedArtifact>> flattenedEmbedArtifactsByVariant = new LinkedHashMap<>()
+
     @Override
     void apply(Project project) {
         this.project = project
@@ -55,12 +57,6 @@ class FatAarPlugin implements Plugin<Project> {
     }
 
     private void doAfterEvaluate() {
-        embedConfigurations.each {
-            if (project.fataar.transitive) {
-                it.transitive = true
-            }
-        }
-
         project.android.libraryVariants.all { variant ->
             Collection<ResolvedArtifact> artifacts = new ArrayList()
             Map<String, SelectedVariantArtifact> syntheticArtifactSelections = new LinkedHashMap<>()
@@ -87,8 +83,10 @@ class FatAarPlugin implements Plugin<Project> {
             if (!artifacts.isEmpty()) {
                 Collection<FlattenedEmbedNode> flattenedEmbedNodes =
                         flattenedEmbedNodesByVariant.get(variant.name) ?: Collections.emptyList()
+                Collection<FlattenedEmbedArtifact> flattenedEmbedArtifacts =
+                        flattenedEmbedArtifactsByVariant.get(variant.name) ?: Collections.emptyList()
                 def processor = new VariantProcessor(project, variant, embedProjectsMap, flattenedEmbedNodes,
-                        syntheticArtifactSelections)
+                        flattenedEmbedArtifacts, syntheticArtifactSelections)
                 processor.processVariant(artifacts, firstLevelDependencies)
             }
         }
@@ -145,16 +143,32 @@ class FatAarPlugin implements Plugin<Project> {
             }
         }
         active.remove(plugin)
+        // 必须先于任何解析：图校验会解析各节点（含本模块）的 embed 配置，
+        // 配置一旦解析就不能再改 transitive。
+        plugin.applyTransitiveEmbedSetting()
         plugin.validateNestedEmbedGraphs()
         plugin.doAfterEvaluate()
         processed.add(plugin)
     }
 
+    /**
+     * embed 配置默认 transitive=false；开启 fataar.transitive 时改由 POM 传播传递依赖。
+     * 必须在配置被解析之前执行（见 processPluginAfterDependencies 的调用顺序）。
+     */
+    private void applyTransitiveEmbedSetting() {
+        embedConfigurations.each {
+            if (project.fataar.transitive) {
+                it.transitive = true
+            }
+        }
+    }
+
     private void validateNestedEmbedGraphs() {
         project.android.libraryVariants.all { variant ->
-            Collection<FlattenedEmbedNode> flattened =
-                    new NestedEmbedGraphValidator(project, variant as LibraryVariant).validate()
+            NestedEmbedGraphValidator validator = new NestedEmbedGraphValidator(project, variant as LibraryVariant)
+            Collection<FlattenedEmbedNode> flattened = validator.validate()
             flattenedEmbedNodesByVariant.put(variant.name, flattened)
+            flattenedEmbedArtifactsByVariant.put(variant.name, validator.embeddedArtifacts)
         }
     }
 
