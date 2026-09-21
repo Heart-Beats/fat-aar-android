@@ -81,12 +81,13 @@ dependencies {
 
 For a chain `lib-main -> lib-aar -> lib-aar2`, `lib-main` consumes `lib-aar`'s **thin AAR** (the AGP `bundle<Variant>Aar` output), flattens the whole nested graph at configuration time, and collects each module's **own** classes once. The final `lib-main` AAR therefore still contains all three layers, and this applies recursively to deeper chains. A child with applicable `embed*` declarations that does not apply the plugin fails during configuration; use `implementation` or `api` instead when that child should remain a normal Android library.
 
-Nested `embed` consumption does not depend on intermediate final artifacts. The consuming root flattens the whole nested graph at configuration time, collects each module's **own** classes once, and performs a single class merge and R rewrite. Non-class content (resources, Manifest, JNI, consumer ProGuard, local jars, SPI and Kotlin metadata) is still inherited from direct children's thin AARs and is therefore not duplicated.
+Nested `embed` consumption does not depend on intermediate final artifacts. The consuming root flattens the whole nested graph at configuration time, collects each module's **own** classes and non-class content (resources, Manifest, JNI, consumer ProGuard, local jars, SPI and Kotlin metadata) once, and performs a single merge and a single R rewrite. An intermediate module produces only a thin AAR holding its own content for the current build.
 
-Two consequences:
+Three consequences:
 
-- Building the root does not trigger descendant class-merge or re-bundle tasks; an intermediate module builds its complete final AAR only when it is assembled or published itself.
-- Packaging time no longer scales linearly with nesting depth.
+- Building the root does not trigger descendant explode, class-merge or re-bundle tasks; an intermediate module flattens its own subtree only when it is assembled or published itself.
+- Packaging time no longer scales with nesting depth: the total amount of extracted content equals the sum of every node's own content.
+- A module's thin AAR depends on whether that module is the consuming root for the current build. The plugin cleans up leftover exploded content for non-root modules automatically, so assembling an intermediate module and then building an ancestor will not mix stale content in.
 
 The final fat AAR is written to `build/outputs/fat-aar/<variant>/`, separate from AGP's source AAR.
 

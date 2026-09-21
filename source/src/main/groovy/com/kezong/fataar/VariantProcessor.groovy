@@ -75,14 +75,6 @@ class VariantProcessor {
         mJarFiles.add(jar)
     }
 
-    /**
-     * 非类内容（res/assets/jniLibs/Manifest/consumer ProGuard/libs/SPI/Kotlin）的合并范围：
-     * 只取直接子模块，因为它们的薄产物已经继承了整棵子树的非类内容，取深层会重复。
-     */
-    private Collection<AndroidArchiveLibrary> getDirectLibraries() {
-        return mAndroidArchiveLibraries.findAll { it.isDirect() }
-    }
-
     void processVariant(Collection<ResolvedArtifact> artifacts,
                         Collection<ResolvableDependency> dependencies) {
         String taskPath = 'pre' + mVariant.name.capitalize() + 'Build'
@@ -96,8 +88,10 @@ class VariantProcessor {
         mReBundleTask = configureReBundleAarTask(bundleTask)
         preEmbed(artifacts, dependencies, prepareTask)
         processArtifacts(artifacts, prepareTask, bundleTask)
-        // 深层节点只提供自有 class 与 DataBinding metadata；非类内容由直接子模块的薄产物继承
+        // 扁平图里的每个节点各贡献一份自有内容；非根模块的后代不会被解包，其目录不存在因而自然不参与
         processFlattenedEmbedNodes(bundleTask)
+        // 非消费根时必须清掉上一轮遗留的解压产物，否则会串味（见 createResetExplodedAarsTask）
+        createResetExplodedAarsTask()
         processClassesAndJars(bundleTask)
         if (mAndroidArchiveLibraries.isEmpty()) {
             return
@@ -303,7 +297,7 @@ class VariantProcessor {
 
         File mergedServicesDir = mProject.file("${mProject.buildDir}/intermediates/merged_services/${mVariant.name}")
         File extractedKotlinModulesDir = mProject.file("${mProject.buildDir}/intermediates/extracted_kotlin_modules/${mVariant.name}")
-        Collection<File> embeddedRoots = getDirectLibraries().collect { it.rootFolder }
+        Collection<File> embeddedRoots = mAndroidArchiveLibraries.collect { it.rootFolder }
         Collection<File> serviceSourceDirectories = getLocalServiceSourceDirectories()
         def mergeServiceAndKotlinTask = mProject.tasks.register("mergeEmbedServicesAndKotlin${variantName}", MergeEmbedServicesAndKotlinTask) {
             FatAarDiagnostics.markTask(mProject, it, mVariant.name, 'servicesAndKotlin')
@@ -521,6 +515,9 @@ class VariantProcessor {
         } else if (prepareTask != null) {
             explodeTask.dependsOn(prepareTask)
         }
+        // 只有本次构建的「消费根」才展平子树：非根模块只产出仅含自身内容的薄产物。
+        // 注意这里必须用 onlyIf（执行期求值）：任务图构建期 taskGraph 尚未填充，不能据其决策。
+        explodeTask.onlyIf { isConsumptionRoot() }
         if (gateVariantPipeline) {
             mVersionAdapter.getJavaCompileTask().dependsOn(explodeTask)
             bundleTask.configure {
@@ -529,6 +526,47 @@ class VariantProcessor {
         }
         mExplodeTasks.add(explodeTask)
         return explodeTask
+    }
+
+    /**
+     * 清理非消费根模块遗留的解压产物。
+     *
+     * 同一模块可能先作为消费根构建（解压出后代内容），随后又作为中间模块参与上层构建。
+     * 此时它的 explode 会被 onlyIf 跳过、不会自行清目录，遗留内容会被 res 的 srcDir、
+     * jniLibs / assets 的存在性判断沿用，使「仅含自身内容」的薄产物混入后代内容
+     * （表现为上层合并 JNI/res 时报 Duplicate resources）。
+     *
+     * 本任务总在非根时执行删除；根模块下为空操作，因此不影响正常展平。
+     */
+    private Task createResetExplodedAarsTask() {
+        Task resetTask = mProject.tasks.create("resetExplodedAars${mVariant.name.capitalize()}")
+        resetTask.outputs.upToDateWhen { false }
+        resetTask.doLast {
+            if (isConsumptionRoot()) {
+                return
+            }
+            mAndroidArchiveLibraries.each { AndroidArchiveLibrary library ->
+                File root = library.getRootFolder()
+                if (root.exists()) {
+                    root.deleteDir()
+                }
+            }
+        }
+        mExplodeTasks.add(resetTask)
+        return resetTask
+    }
+
+    /**
+     * 本次构建中，本模块是否为嵌套消费的根（即它自己的最终产物会真的被构建）。
+     * 用任务图判定而不是解析命令行：全量 assemble 时所有模块都在图中，退化为逐层合并（正确但慢）；
+     * 显式指定聚合模块时只有它命中，中间模块因此完全不做解压与注入。
+     */
+    private boolean isConsumptionRoot() {
+        def taskGraph = mProject.gradle.taskGraph
+        if (taskGraph == null) {
+            return true
+        }
+        return taskGraph.hasTask("${mProject.path}:reBundleAar${mVariant.name.capitalize()}")
     }
 
     /**
@@ -547,7 +585,7 @@ class VariantProcessor {
         }
 
         final List<File> inputManifests = new ArrayList<>()
-        for (archiveLibrary in getDirectLibraries()) {
+        for (archiveLibrary in mAndroidArchiveLibraries) {
             inputManifests.add(archiveLibrary.getManifest())
         }
 
@@ -574,14 +612,14 @@ class VariantProcessor {
             dependsOn(mVersionAdapter.getJavaCompileTask())
             mustRunAfter(syncLibTask)
 
-            inputs.files(getDirectLibraries().stream().map { it.libsFolder }.collect())
+            inputs.files(mAndroidArchiveLibraries.stream().map { it.libsFolder }.collect())
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
             def outputDir = mVersionAdapter.getLibsDirFile()
             outputs.dir(outputDir)
 
             doFirst {
-                ExplodedHelper.processLibsIntoLibs(mProject, getDirectLibraries(), mJarFiles, outputDir)
+                ExplodedHelper.processLibsIntoLibs(mProject, mAndroidArchiveLibraries, mJarFiles, outputDir)
             }
         }
         return task
@@ -630,7 +668,7 @@ class VariantProcessor {
         }
 
         syncLibTask.configure {
-            inputs.files(getDirectLibraries().stream().map { it.libsFolder }.collect())
+            inputs.files(mAndroidArchiveLibraries.stream().map { it.libsFolder }.collect())
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.files(mJarFiles).withPathSensitivity(PathSensitivity.RELATIVE)
         }
@@ -672,7 +710,7 @@ class VariantProcessor {
 
             mProject.android.sourceSets.each { DefaultAndroidSourceSet sourceSet ->
                 if (sourceSet.name == mVariant.name) {
-                    for (archiveLibrary in getDirectLibraries()) {
+                    for (archiveLibrary in mAndroidArchiveLibraries) {
                         FatUtils.logInfo("Merge resource，Library res：${archiveLibrary.resFolder}")
                         sourceSet.res.srcDir(archiveLibrary.resFolder)
                     }
@@ -696,7 +734,7 @@ class VariantProcessor {
         assetsTask.doFirst {
             mProject.android.sourceSets.each {
                 if (it.name == mVariant.name) {
-                    for (archiveLibrary in getDirectLibraries()) {
+                    for (archiveLibrary in mAndroidArchiveLibraries) {
                         if (archiveLibrary.assetsFolder != null && archiveLibrary.assetsFolder.exists()) {
                             FatUtils.logInfo("Merge assets，Library assets folder：${archiveLibrary.assetsFolder}")
                             it.assets.srcDir(archiveLibrary.assetsFolder)
@@ -721,7 +759,7 @@ class VariantProcessor {
             dependsOn(mExplodeTasks)
 
             doFirst {
-                for (archiveLibrary in getDirectLibraries()) {
+                for (archiveLibrary in mAndroidArchiveLibraries) {
                     if (archiveLibrary.jniFolder != null && archiveLibrary.jniFolder.exists()) {
                         mProject.android.sourceSets.each {
                             if (it.name == mVariant.name) {
@@ -748,7 +786,7 @@ class VariantProcessor {
             dependsOn(mExplodeTasks)
             doLast {
                 try {
-                    Collection<File> files = getDirectLibraries().stream().map { it.proguardRules }.collect()
+                    Collection<File> files = mAndroidArchiveLibraries.stream().map { it.proguardRules }.collect()
                     File of
                     if (outputFile instanceof File) {
                         of = outputFile
@@ -784,7 +822,7 @@ class VariantProcessor {
             dependsOn(mExplodeTasks)
             doLast {
                 try {
-                    Collection<File> files = getDirectLibraries().stream().map { it.proguardRules }.collect()
+                    Collection<File> files = mAndroidArchiveLibraries.stream().map { it.proguardRules }.collect()
                     File of
                     if (outputFile instanceof File) {
                         of = outputFile
