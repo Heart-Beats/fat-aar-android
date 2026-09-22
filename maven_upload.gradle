@@ -8,8 +8,8 @@
  *   - 自定义产物模式（通过 ext.publishArtifact 指定预编译文件）
  *
  * 发布配置说明：
- *   每个需要发布的子项目须在自身目录下创建 gradle.properties，包含：
- *   PUBLISH_ARTIFACT_ID  （必填）构件 ID
+ *   发布属性由 publish_config.gradle 统一注入到每个子项目的 ext 属性，包含：
+ *   PUBLISH_ARTIFACT_ID  （必填，由模块名自动推导）构件 ID
  *   PUBLISH_GROUP_ID     （可选，默认取根项目的值）
  *   PUBLISH_VERSION      （可选，默认取根项目的值）
  *   publishEnabled       （可选，默认 true；设为 false 可跳过该子项目）
@@ -81,6 +81,23 @@ def createSourcesAndJavadocTasks = { sub, isAndroidLib, isJavaLib, isKotlinAndro
         // 生成 Javadoc 文档
         sub.task("androidJavadocs", type: Javadoc) {
             source = sub.android.sourceSets.main.java.sourceFiles
+            // 源码按 UTF-8 读取，避免 Windows 下 Javadoc 默认按 GBK 解析中文注释报「不可映射字符」
+            options.encoding = 'UTF-8'
+            // 发布场景只需产出 javadoc.jar，忽略文档告警/错误（如无法解析的 {@link}）
+            failOnError = false
+
+            // classpath 复用编译任务（compileReleaseJavaWithJavac）的 classpath：
+            // 已按编译 attributes 正确解析，project 依赖选中正确 variant。
+            // 不能直接引用 *CompileClasspath：javadoc 自身 attributes 缺少 artifactType 等，
+            // 解析 project 依赖时会产生 variant 歧义（Cannot choose between variants）。
+            // 依赖编译任务确保 classpath 已解析，执行时再取编译任务的 classpath。
+            dependsOn 'compileReleaseJavaWithJavac'
+            doFirst {
+                def ct = sub.tasks.findByName('compileReleaseJavaWithJavac')
+                if (ct != null) {
+                    classpath = ct.classpath
+                }
+            }
         }
 
         // 从 Javadoc 输出打包 javadoc.jar
@@ -96,6 +113,11 @@ def createSourcesAndJavadocTasks = { sub, isAndroidLib, isJavaLib, isKotlinAndro
         }
         return [s, j]
     } else if (isJavaLib || isKotlinJvm || isGroovy) {
+        // Java/Groovy/Kotlin JVM：统一 UTF-8 编码并忽略 javadoc 告警
+        sub.tasks.named('javadoc') {
+            options.encoding = 'UTF-8'
+            failOnError = false
+        }
         def s = sub.task("sourcesJar", type: Jar, dependsOn: 'classes') {
             setClassifier(delegate, 'sources')
             from sub.sourceSets.main.allSource
@@ -116,12 +138,234 @@ def createSourcesAndJavadocTasks = { sub, isAndroidLib, isJavaLib, isKotlinAndro
     return [s, j]
 }
 
+/* ============================================================================
+ * fixPomFile 依赖处理辅助函数
+ * ============================================================================ */
+
+/*
+ * 收集模块声明的依赖，按类型分组：
+ *   platformDeps   - platform/BOM 依赖（attributes 含 org.gradle.category=platform）→ <dependencyManagement>
+ *   regularDeps    - 普通依赖（有版本）或 project 依赖 → <dependencies> 带 version
+ *   bomManagedDeps - BOM 管理版本依赖（声明无版本）→ <dependencies> 不带 version
+ */
+def collectDeclaredDependencies(sub, configNames, resolvedVersions, autoAddedDeps) {
+    def platformDeps = [], regularDeps = [], bomManagedDeps = []
+    // 同一依赖可能同时出现在多个配置（Android 配置继承，如 api 声明也会出现在 implementation），
+    // 按 group:name 去重，避免 POM 中重复（如 dependencyManagement 里 BOM 出现两次）
+    def seenPlatform = new HashSet()
+    def seenRegular = new HashSet()
+    def seenBom = new HashSet()
+    def configScopeMap = [
+            'api'               : 'compile',
+            'implementation'    : 'runtime',
+            'compileOnly'       : 'provided',
+            'runtimeOnly'       : 'runtime',
+            'testImplementation': 'test'
+    ]
+    configNames.each { configName ->
+        def cfg = sub.configurations.findByName(configName)
+        if (cfg == null) return
+        def scope = configScopeMap[configName] ?: 'compile'
+        cfg.allDependencies.each { dep ->
+            def group = null, name = null, version = null
+            if (dep instanceof org.gradle.api.artifacts.ProjectDependency) {
+                def pd = (org.gradle.api.artifacts.ProjectDependency) dep
+                group = sub.rootProject.ext.myGroupId
+                name = pd.path.replace(':', '')
+                version = sub.rootProject.ext.myVersion
+                if (!autoAddedDeps.contains(group + ":" + name) && seenRegular.add(group + ":" + name)) {
+                    regularDeps << [group: group, name: name, version: version, scope: scope]
+                }
+            } else if (dep instanceof org.gradle.api.artifacts.ModuleDependency) {
+                def md = (org.gradle.api.artifacts.ModuleDependency) dep
+                if (md.group == null || md.name == null) return
+                group = md.group
+                name = md.name
+                if (autoAddedDeps.contains(group + ":" + name)) return
+                def key = group + ":" + name
+                def cat = null
+                try {
+                    cat = md.attributes.getAttribute(org.gradle.api.attributes.Category.CATEGORY_ATTRIBUTE)
+                } catch (Exception ignored) {
+                }
+                def isPlatform = cat != null
+                        && (cat.toString() == 'platform' || cat.toString() == 'enforced-platform')
+                if (isPlatform) {
+                    if (!seenPlatform.add(key)) return
+                    def bv = md.version
+                    if (bv != null && bv.endsWith('+')) {
+                        bv = resolvedVersions["${group}:${name}"] ?: bv
+                    }
+                    platformDeps << [group: group, name: name, version: bv, scope: scope]
+                } else if (md.version != null) {
+                    if (!seenRegular.add(key)) return
+                    def v = md.version
+                    if (v.endsWith('+')) {
+                        v = resolvedVersions["${group}:${name}"] ?: v
+                    }
+                    regularDeps << [group: group, name: name, version: v, scope: scope]
+                } else {
+                    if (!seenBom.add(key)) return
+                    bomManagedDeps << [group: group, name: name, scope: scope]
+                }
+            }
+        }
+    }
+    return [platformDeps, regularDeps, bomManagedDeps]
+}
+
+/*
+ * 有组件时：校验修复 from component 生成的 POM。
+ * 保留 from component 已正确生成的依赖，只修正：
+ *   1) 删除插件自动添加的依赖
+ *   2) platform/BOM 依赖移到 <dependencyManagement>（import scope）
+ *   3) 补充 BOM 管理版本缺失的依赖（如 compose-ui）
+ */
+def verifyFixPom(pomContent, platformDeps, bomManagedDeps, autoAddedDeps) {
+    // 1. 删除插件自动添加的依赖块
+    pomContent = removeDependencyBlocks(pomContent) { block ->
+        def g = (block =~ /<groupId>(.*?)<\/groupId>/).with { it.find() ? it.group(1) : null }
+        def a = (block =~ /<artifactId>(.*?)<\/artifactId>/).with { it.find() ? it.group(1) : null }
+        return g != null && a != null && autoAddedDeps.contains(g + ":" + a)
+    }
+
+    // 2. 把 platform/BOM 依赖从 <dependencies> 移到 <dependencyManagement>
+    if (!platformDeps.isEmpty()) {
+        def platformKeys = platformDeps.collect { "${it.group}:${it.name}" } as Set
+        pomContent = removeDependencyBlocks(pomContent) { block ->
+            def g = (block =~ /<groupId>(.*?)<\/groupId>/).with { it.find() ? it.group(1) : null }
+            def a = (block =~ /<artifactId>(.*?)<\/artifactId>/).with { it.find() ? it.group(1) : null }
+            return g != null && a != null && platformKeys.contains(g + ":" + a)
+        }
+        pomContent = insertDependencyManagement(pomContent, platformDeps)
+    }
+
+    // 3. 补充 BOM 管理版本缺失的依赖（POM 中缺失的，用声明配置的 scope）
+    def missing = bomManagedDeps.findAll { !pomContent.contains("<artifactId>${it.name}</artifactId>") }
+    if (!missing.isEmpty()) {
+        def addBuilder = new StringBuilder()
+        missing.each { d ->
+            addBuilder.append('    <dependency>\n')
+            addBuilder.append("      <groupId>${d.group}</groupId>\n")
+            addBuilder.append("      <artifactId>${d.name}</artifactId>\n")
+            addBuilder.append("      <scope>${d.scope ?: 'compile'}</scope>\n")
+            addBuilder.append('    </dependency>\n')
+        }
+        pomContent = pomContent.replace('  </dependencies>', addBuilder.toString() + '  </dependencies>')
+    }
+    return pomContent
+}
+
+/*
+ * 无组件时：脚本补齐全依赖（多配置收集），生成 <dependencyManagement> + <dependencies>。
+ */
+def generateFullDeps(pomContent, platformDeps, regularDeps, bomManagedDeps, resolvedVersions) {
+    def dmBuilder = new StringBuilder()
+    if (!platformDeps.isEmpty()) {
+        dmBuilder.append('  <dependencyManagement>\n')
+        dmBuilder.append('    <dependencies>\n')
+        platformDeps.each { d ->
+            dmBuilder.append('      <dependency>\n')
+            dmBuilder.append("        <groupId>${d.group}</groupId>\n")
+            dmBuilder.append("        <artifactId>${d.name}</artifactId>\n")
+            dmBuilder.append("        <version>${d.version}</version>\n")
+            dmBuilder.append('        <type>pom</type>\n')
+            dmBuilder.append('        <scope>import</scope>\n')
+            dmBuilder.append('      </dependency>\n')
+        }
+        dmBuilder.append('    </dependencies>\n')
+        dmBuilder.append('  </dependencyManagement>\n')
+    }
+
+    def depsBuilder = new StringBuilder()
+    depsBuilder.append('  <dependencies>\n')
+    regularDeps.each { d ->
+        depsBuilder.append('    <dependency>\n')
+        depsBuilder.append("      <groupId>${d.group}</groupId>\n")
+        depsBuilder.append("      <artifactId>${d.name}</artifactId>\n")
+        depsBuilder.append("      <version>${d.version}</version>\n")
+        depsBuilder.append("      <scope>${d.scope ?: 'compile'}</scope>\n")
+        depsBuilder.append('    </dependency>\n')
+    }
+    bomManagedDeps.each { d ->
+        depsBuilder.append('    <dependency>\n')
+        depsBuilder.append("      <groupId>${d.group}</groupId>\n")
+        depsBuilder.append("      <artifactId>${d.name}</artifactId>\n")
+        if (platformDeps.isEmpty()) {
+            def real = resolvedVersions["${d.group}:${d.name}"]
+            if (real != null) {
+                depsBuilder.append("      <version>${real}</version>\n")
+            }
+        }
+        depsBuilder.append("      <scope>${d.scope ?: 'compile'}</scope>\n")
+        depsBuilder.append('    </dependency>\n')
+    }
+    depsBuilder.append('  </dependencies>\n')
+
+    // 有依赖才插入（无组件模块可能无依赖）
+    if (!platformDeps.isEmpty() || !regularDeps.isEmpty() || !bomManagedDeps.isEmpty()) {
+        if (!platformDeps.isEmpty()) {
+            pomContent = pomContent.replace('</project>', dmBuilder.toString() + depsBuilder.toString() + '</project>')
+        } else {
+            pomContent = pomContent.replace('</project>', depsBuilder.toString() + '</project>')
+        }
+    }
+    return pomContent
+}
+
+/*
+ * 从 POM 中删除满足条件的 dependency 块。
+ * predicate：闭包，接收 dependency 块字符串，返回 true 则删除。
+ */
+def removeDependencyBlocks(pomContent, predicate) {
+    def matcher = (~/(?s)<dependency>.*?<\/dependency>/).matcher(pomContent)
+    def sb = new StringBuilder()
+    while (matcher.find()) {
+        def block = matcher.group()
+        if (predicate(block)) {
+            // 删除：用空 replacement 调用 appendReplacement，保证后续文本不残留
+            matcher.appendReplacement(sb, '')
+        } else {
+            matcher.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(block))
+        }
+    }
+    matcher.appendTail(sb)
+    return sb.toString()
+}
+
+/*
+ * 插入/替换 <dependencyManagement>（移除旧的后，在 <dependencies> 前插入）。
+ */
+def insertDependencyManagement(pomContent, platformDeps) {
+    def dmBuilder = new StringBuilder()
+    dmBuilder.append('  <dependencyManagement>\n')
+    dmBuilder.append('    <dependencies>\n')
+    platformDeps.each { d ->
+        dmBuilder.append('      <dependency>\n')
+        dmBuilder.append("        <groupId>${d.group}</groupId>\n")
+        dmBuilder.append("        <artifactId>${d.name}</artifactId>\n")
+        dmBuilder.append("        <version>${d.version}</version>\n")
+        dmBuilder.append('        <type>pom</type>\n')
+        dmBuilder.append('        <scope>import</scope>\n')
+        dmBuilder.append('      </dependency>\n')
+    }
+    dmBuilder.append('    </dependencies>\n')
+    dmBuilder.append('  </dependencyManagement>\n')
+
+    pomContent = pomContent.replaceAll(/(?s)<dependencyManagement>.*?<\/dependencyManagement>\s*/, '')
+    if (pomContent.contains('<dependencies>')) {
+        pomContent = pomContent.replace('<dependencies>', dmBuilder.toString() + '  <dependencies>')
+    } else {
+        pomContent = pomContent.replace('</project>', dmBuilder.toString() + '</project>')
+    }
+    return pomContent
+}
+
 /*
  * POM 文件后处理统一入口。
  * 在 generatePomFileForMavenPublication 任务完成后执行，处理三类问题：
  *
- * 1. 中文乱码修复：Groovy Properties 读取 gradle.properties 时使用平台编码（GBK），
- *    导致中文被错误编码。以 UTF-8 重新读取并替换。
+ * 1. 中文乱码修复：当描述含中文时，用注入属性中的原始值修正 POM 中的描述。
  *
  * 2. packaging 修正：当组件（release/java）为 null 时，Gradle 默认生成 packaging=pom，
  *    需要根据项目类型修正为 aar 或 jar。
@@ -141,74 +385,95 @@ def createSourcesAndJavadocTasks = { sub, isAndroidLib, isJavaLib, isKotlinAndro
  *   runtimeOnly      → runtime    （仅运行时可见）
  *   testImplementation → test     （仅测试时可见）
  */
-def fixPomFile = { sub, String packaging = null, boolean addDependencies = false ->
+def fixPomFile = { sub, String packaging = null, boolean hasComponent = false ->
+    // POM 后处理需要依赖已解析（取实际版本），因此让 POM 生成任务依赖编译任务
+    def compileTask = sub.tasks.findByName('bundleReleaseAar') ?: sub.tasks.findByName('jar')
     sub.tasks.named('generatePomFileForMavenPublication').configure {
+        if (compileTask != null) {
+            dependsOn compileTask
+        }
         doLast {
             def pomFile = sub.file("build/publications/maven/pom-default.xml")
             if (!pomFile.exists()) return
-
             def pomContent = pomFile.getText('UTF-8')
+
+            // 插件自动添加到配置的依赖（用户未显式声明），发布时从 POM 中排除。
+            // 这类依赖由构建插件在 consumer 侧也会自动注入，库不应在 POM 中重复声明固定版本，
+            // 否则会与 consumer 自身插件注入的版本冲突。
+            def autoAddedDeps = [
+                    'androidx.databinding:viewbinding',                 // AGP viewBinding 特性自动添加（编译期）
+                    'org.jetbrains.kotlin:kotlin-stdlib',              // Kotlin 插件自动添加
+                    'org.jetbrains.kotlin:kotlin-parcelize-runtime',   // kotlin-parcelize 插件自动注入（runtimeOnly）
+                    'org.jetbrains.kotlin:kotlin-android-extensions-runtime' // kotlin-android-extensions 插件自动注入
+            ] as Set
+
+            // 收集所有「可解析」配置的实际版本（动态版本 + 修复、BOM 管理版本补齐）：
+            // api/implementation 等是声明配置（canBeResolved=false），不能直接解析；
+            // 动态收集 canBeResolved 的配置，用 resolutionResult.allComponents 取实际版本
+            //（project 依赖多变体时 resolvedConfiguration 会失败，而 resolutionResult 仍可用）。
+            def resolvedVersions = [:]
+            sub.configurations.findAll {
+                it.canBeResolved && !it.name.contains('Test')
+            }.each { cfg ->
+                try {
+                    cfg.incoming.resolutionResult.allComponents.each { comp ->
+                        def mv = comp.moduleVersion
+                        if (mv != null) {
+                            resolvedVersions["${mv.group}:${mv.name}"] = mv.version
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
 
             // 1. 修正 packaging
             if (packaging != null) {
                 pomContent = pomContent.replace('<packaging>pom</packaging>', "<packaging>${packaging}</packaging>")
             }
 
-            // 2. 手动添加依赖（仅在组件为 null 时需要）
-            if (addDependencies && !pomContent.contains('<dependencies>')) {
-                def collectedDeps = [:]
-                def configScopeMap = [
-                        'api'               : 'compile',
-                        'implementation'    : 'runtime',
-                        'compileOnly'       : 'provided',
-                        'runtimeOnly'       : 'runtime',
-                        'testImplementation': 'test'
-                ]
-                def configPriority = ['testImplementation', 'runtimeOnly', 'compileOnly', 'implementation', 'api']
-
-                configPriority.each { configName ->
-                    try {
-                        sub.configurations.findByName(configName)?.allDependencies?.each { dep ->
-                            if (dep.group != null && dep.name != null && dep.version != null) {
-                                def key = "${dep.group}:${dep.name}"
-                                collectedDeps[key] = [dep.group, dep.name, dep.version, configScopeMap[configName]]
-                            }
-                        }
-                    } catch (Exception ignored) {}
-                }
-
-                if (!collectedDeps.isEmpty()) {
-                    def depsBuilder = new StringBuilder()
-                    depsBuilder.append('  <dependencies>\n')
-                    collectedDeps.each { key, info ->
-                        def (depGroup, depName, depVersion, scope) = info
-                        if (depName != sub.name
-                                && depVersion != 'unspecified'
-                                && !depGroup.startsWith('Project ')) {
-                            depsBuilder.append('    <dependency>\n')
-                            depsBuilder.append("      <groupId>${depGroup}</groupId>\n")
-                            depsBuilder.append("      <artifactId>${depName}</artifactId>\n")
-                            depsBuilder.append("      <version>${depVersion}</version>\n")
-                            depsBuilder.append("      <scope>${scope}</scope>\n")
-                            depsBuilder.append('    </dependency>\n')
-                        }
-                    }
-                    depsBuilder.append('  </dependencies>\n')
-                    pomContent = pomContent.replace('</project>', "${depsBuilder}</project>")
-                }
+            // 2. 修复中文描述
+            def correctDesc = sub.hasProperty('PUBLISH_POM_DESCRIPTION')
+                    ? sub.property('PUBLISH_POM_DESCRIPTION')
+                    : ''
+            if (correctDesc) {
+                pomContent = pomContent.replaceAll(
+                        '<description>.*?</description>',
+                        "<description>${correctDesc}</description>")
             }
 
-            // 3. 修复中文乱码
-            def descPropsFile = sub.file('gradle.properties')
-            if (descPropsFile.exists()) {
-                def descProps = new Properties()
-                descProps.load(new InputStreamReader(new FileInputStream(descPropsFile), 'UTF-8'))
-                def correctDesc = descProps.getProperty('PUBLISH_POM_DESCRIPTION', '')
-                if (correctDesc) {
-                    pomContent = pomContent.replaceAll(
-                            '<description>.*?</description>',
-                            "<description>${correctDesc}</description>")
+            // 3. 依赖处理（核心）：hasComponent 决定「校验修复」还是「补齐」。
+            //    统一从全部配置收集（覆盖 api/implementation/compileOnly 等，
+            //    BOM 依赖可能声明在任何配置），由 collectDeclaredDependencies 记录各自 scope。
+            def configNames = ['testImplementation', 'runtimeOnly', 'compileOnly', 'implementation', 'api']
+            def (platformDeps, regularDeps, bomManagedDeps) = collectDeclaredDependencies(sub, configNames, resolvedVersions, autoAddedDeps)
+
+            if (hasComponent) {
+                // 有组件：校验修复 from component 生成的 POM（保留其余依赖，只修正问题）
+                pomContent = verifyFixPom(pomContent, platformDeps, bomManagedDeps, autoAddedDeps)
+            } else {
+                // 无组件：脚本补齐全依赖
+                pomContent = generateFullDeps(pomContent, platformDeps, regularDeps, bomManagedDeps, resolvedVersions)
+            }
+
+            // 4. 动态版本 + 兜底
+            if (!resolvedVersions.isEmpty() && (pomContent =~ /(?s)<version>[^<]*\+<\/version>/)) {
+                def matcher = (~/(?s)<dependency>.*?<\/dependency>/).matcher(pomContent)
+                def sb = new StringBuilder()
+                while (matcher.find()) {
+                    def block = matcher.group()
+                    def g = (block =~ /<groupId>(.*?)<\/groupId>/).with { it.find() ? it.group(1) : null }
+                    def a = (block =~ /<artifactId>(.*?)<\/artifactId>/).with { it.find() ? it.group(1) : null }
+                    def v = (block =~ /<version>(.*?)<\/version>/).with { it.find() ? it.group(1) : null }
+                    if (g != null && a != null && v != null && v.endsWith('+')) {
+                        def real = resolvedVersions["${g}:${a}"]
+                        if (real != null) {
+                            block = block.replaceAll(~/<version>.*?<\/version>/, "<version>${real}</version>")
+                        }
+                    }
+                    matcher.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(block))
                 }
+                matcher.appendTail(sb)
+                pomContent = sb.toString()
             }
 
             pomFile.setText(pomContent, 'UTF-8')
@@ -216,12 +481,11 @@ def fixPomFile = { sub, String packaging = null, boolean addDependencies = false
     }
 }
 
+
 /*
  * 计算 publishTarget（在 subprojects 之外读取一次即可）
  */
-def publishTarget = rootProject.hasProperty('publishTarget')
-        ? rootProject.property('publishTarget')
-        : 'central'
+def publishTarget = rootProject.hasProperty('publishTarget') ? rootProject.property('publishTarget') : 'central'
 def publishToCentral = publishTarget == 'central'
 def publishToCustom = publishTarget == 'custom'
 
@@ -238,39 +502,35 @@ def customMavenSigningRequired = getSecret("CUSTOM_MAVEN_SIGNING_REQUIRED", "CUS
  * 子项目发布配置
  *
  * 分两阶段执行：
- *   阶段一（子项目 evaluate 之前）：读取 gradle.properties 判断是否需要发布，
- *           若需要则提前 apply maven-publish + signing 插件。
+ *   阶段一（子项目 evaluate 之前）：判断子项目是否被注入了 PUBLISH_ARTIFACT_ID
+ *           （由 publish_config.gradle 统一注入），需要发布则提前 apply maven-publish + signing 插件。
  *   阶段二（afterEvaluate 回调中）：检测子项目实际应用了哪个插件，
  *           据此配置对应的发布产物（AAR / JAR / 自定义文件）。
  * ============================================================================ */
 
 rootProject.subprojects { sub ->
     /*
-     * 检查子项目目录下是否存在 gradle.properties（evaluate 之前即可读文件系统）
+     * 判断子项目是否注入 PUBLISH_ARTIFACT_ID 属性
      */
-    def propsFile = sub.file('gradle.properties')
-    if (!propsFile.exists()) return
-
-    /*
-     * 手动读取属性文件，判断是否包含 PUBLISH_ARTIFACT_ID
-     */
-    def subProps = new Properties()
-    propsFile.withInputStream { subProps.load(it) }
-    if (!subProps.containsKey('PUBLISH_ARTIFACT_ID')) return
+    if (!sub.hasProperty('PUBLISH_ARTIFACT_ID')) return
 
     /* 支持通过 publishEnabled=false 跳过发布 */
-    def enabled = subProps.getProperty('publishEnabled', 'true')
-    if (enabled.equalsIgnoreCase('false')) return
+    def enabled = sub.hasProperty('publishEnabled') ? sub.property('publishEnabled') : 'true'
+    if (enabled.toString().equalsIgnoreCase('false')) return
 
     /* 提前 apply 插件（evaluate 之前 apply 是安全的） */
     sub.apply plugin: 'maven-publish'
     sub.apply plugin: 'signing'
 
     /*
+     * 发布配置统一在 projectsEvaluated 执行：
+     * AGP 8.x 的 component 注册晚于 afterEvaluate，projectsEvaluated 时组件已注册，
+     * 据此统一处理产物配置（自定义产物 / from component / 手动指定）与 POM 后处理。
+     *
      * 延迟到子项目 evaluate 完成后再配置发布内容，
      * 因为此处需要检测子项目实际 apply 了哪个插件（android / java / groovy 等）
      */
-    sub.afterEvaluate {
+    sub.gradle.projectsEvaluated {
         def isAndroidLib = sub.plugins.hasPlugin('com.android.library')
         def isJavaLib = sub.plugins.hasPlugin('java-library')
         def isGroovy = sub.plugins.hasPlugin('groovy')
@@ -285,59 +545,74 @@ rootProject.subprojects { sub ->
                     artifactId = sub.property('PUBLISH_ARTIFACT_ID')
                     version = sub.hasProperty('PUBLISH_VERSION') ? sub.property('PUBLISH_VERSION') : rootProject.property('PUBLISH_VERSION')
 
+                    println "maven 依赖坐标 --------->${groupId}:${artifactId}:${version}"
+
+                    // AGP 8.x 的 Android release 组件默认已包含 sources jar，from(component) 时自动带上，
+                    // 手动再加会重复；此标记用于决定是否跳过手动 sources
+                    def androidComponentAvailable = false
+
                     if (hasCustomArtifact) {
-                        /* 自定义产物模式：直接发布指定文件 */
+                        /* 自定义产物模式：先复制到 build 目录再发布，
+                         * 避免 signing 插件生成的 .asc 签名文件落在源码目录 */
                         def art = sub.ext.publishArtifact
-                        if (art instanceof File) {
-                            artifact(art)
-                        } else {
-                            artifact(art.toString())
-                        }
-                        // 根据文件扩展名确定 packaging 类型
                         def artFile = art instanceof File ? art : sub.file(art.toString())
+
+                        // 复制源码目录的 aar/jar 到 build/custom-publish 下，
+                        // 让 signing 生成的 .asc 落在 build 目录而非源码目录
+                        def stagedDir = sub.layout.buildDirectory.dir('custom-publish').get().asFile
+                        def stageTask = sub.tasks.register('stageCustomPublishArtifact', Copy) {
+                            from artFile
+                            into stagedDir
+                        }
+
+                        artifact(new File(stagedDir, artFile.name)) {
+                            builtBy stageTask
+                        }
+
+                        // 根据文件扩展名确定 packaging 类型
                         def customPackaging = artFile.name.endsWith('.aar') ? 'aar' : 'jar'
-                        // POM 后处理：packaging 修正 + 依赖补充 + 中文修复
-                        fixPomFile(sub, customPackaging, true)
+                        // POM 后处理：packaging 修正 + 依赖补齐（自定义产物无组件 → 补齐）+ 中文修复
+                        fixPomFile(sub, customPackaging, false)
                     } else if (isAndroidLib || isKotlinAndroid) {
-                        /* Android Library：发布 release 变体 */
-                        def releaseComponent = sub.components.findByName('release')
-                                ?: sub.components.findByName('android')
+                        /* Android Library：组件已注册（projectsEvaluated），有组件用 from(component)（fixPomFile 校验修复），无组件手动指定 AAR（fixPomFile 补齐） */
+                        def releaseComponent = sub.components.findByName('release') ?: sub.components.findByName('android')
                         if (releaseComponent != null) {
+                            androidComponentAvailable = true
                             from releaseComponent
                         } else {
-                            // AGP 8.x 未配置 singleVariant 时，手动指定 AAR 产物
                             def aarFile = sub.file("build/outputs/aar/${sub.name}-release.aar")
                             artifact(aarFile) { extension = 'aar' }
-                            // 确保 bundleReleaseAar 在所有发布相关任务之前执行
                             sub.tasks.configureEach { task ->
                                 if (task.name.startsWith('publish') || task.name.startsWith('sign')) {
-                                    try { task.dependsOn "bundleReleaseAar" } catch (Exception ignored) {}
+                                    try {
+                                        task.dependsOn "bundleReleaseAar"
+                                    } catch (Exception ignored) {
+                                    }
                                 }
                             }
                         }
-                        // POM 后处理：packaging=aar + 中文修复；组件为 null 时还需补充依赖
-                        fixPomFile(sub, 'aar', releaseComponent == null)
+                        fixPomFile(sub, 'aar', releaseComponent != null)
                     } else if (isJavaLib || isKotlinJvm || isGroovy) {
-                        /* Java / Kotlin JVM / Groovy：发布 java 组件 */
+                        /* Java / Kotlin JVM / Groovy：同 Android，有组件 from(java)，无组件手动 JAR */
                         def javaComponent = sub.components.findByName('java')
                         if (javaComponent != null) {
                             from javaComponent
                         } else {
-                            // java 组件不存在时，手动指定 JAR 产物
                             def jarFile = sub.file("build/libs/${sub.name}-${sub.version}.jar")
                             if (!jarFile.exists()) {
                                 jarFile = sub.file("build/libs/${sub.name}.jar")
                             }
                             artifact(jarFile) { extension = 'jar' }
-                            // 确保 jar 打包任务在签名/发布之前执行
                             sub.tasks.configureEach { task ->
                                 if (task.name.startsWith('publish') || task.name.startsWith('sign')) {
-                                    try { task.dependsOn "jar" } catch (Exception ignored) {}
+                                    try {
+                                        task.dependsOn "jar"
+                                    } catch (Exception ignored) {
+                                    }
                                 }
                             }
                         }
-                        // POM 后处理：packaging=jar + 中文修复；组件为 null 时还需补充依赖
-                        fixPomFile(sub, 'jar', javaComponent == null)
+                        fixPomFile(sub, 'jar', javaComponent != null)
                     } else {
                         throw new GradleException(
                                 "项目 '${sub.name}'：无法识别产物类型。" +
@@ -347,8 +622,20 @@ rootProject.subprojects { sub ->
 
                     // 统一添加 sources + javadoc（Maven Central 强制要求）
                     def (sourcesJar, javadocJar) = createSourcesAndJavadocTasks(sub, isAndroidLib, isJavaLib, isKotlinAndroid, isKotlinJvm, isGroovy, hasCustomArtifact)
-                    artifact(sourcesJar)
-                    artifact(javadocJar)
+                    // AGP 8.x 的 Android release 组件已含 sources jar（from component 时自动带上），
+                    // 手动再加会重复（Invalid publication: multiple artifacts with identical classifier）；
+                    // 因此仅 Android 且有组件时只补 javadoc，其余情况 sources + javadoc 都补
+                    if (androidComponentAvailable) {
+                        artifact(javadocJar) { builtBy javadocJar }
+                    } else {
+                        artifact(sourcesJar) { builtBy sourcesJar }
+                        artifact(javadocJar) { builtBy javadocJar }
+                    }
+
+                    // Gradle 8.13 要求 metadata 任务也显式依赖 sources/javadoc 产物任务
+                    sub.tasks.named('generateMetadataFileForMavenPublication').configure {
+                        dependsOn sourcesJar, javadocJar
+                    }
 
                     /* POM 元数据配置 */
                     pom {
@@ -458,9 +745,28 @@ rootProject.subprojects { sub ->
             sign sub.publishing.publications.maven
         }
 
-        /* Central Portal Publisher API 上传任务（仅在需要发布到 Central 时注册） */
+        /*
+         * Central 发布通道：SNAPSHOT 版本走 maven-snapshots 仓库（maven-publish 原生机制），
+         * release 版本走 Portal bundle 上传 API。
+         */
         if (publishToCentral) {
-            configurePortalUploadTasks(sub, getSecret)
+            def pubVersion = sub.hasProperty('PUBLISH_VERSION')
+                    ? sub.property('PUBLISH_VERSION')
+                    : rootProject.property('PUBLISH_VERSION')
+            if (pubVersion.toString().contains('SNAPSHOT')) {
+                sub.publishing.repositories {
+                    maven {
+                        name = 'mavenCentralSnapshot'
+                        url = 'https://central.sonatype.com/repository/maven-snapshots/'
+                        credentials {
+                            username = getSecret("portalUsername", "PORTAL_USERNAME") ?: ''
+                            password = getSecret("portalPassword", "PORTAL_PASSWORD") ?: ''
+                        }
+                    }
+                }
+            } else {
+                configurePortalUploadTasks(sub, getSecret)
+            }
         }
     }
 }
@@ -647,27 +953,99 @@ def configurePortalUploadTasks(sub, getSecret) {
  * ============================================================================ */
 
 /*
+ * publishAllToMavenLocal — 一次性发布所有子项目到本地 Maven 仓库（~/.m2/repository）
+ */
+tasks.register('publishAllToMavenLocal') {
+    group = 'publishing'
+    description = '将所有子项目发布到本地 Maven 仓库'
+
+    dependsOn subprojects.stream().filter {
+        !it.plugins.hasPlugin('com.android.application')
+    }.collect {
+        it.tasks.named('publishMavenPublicationToMavenLocal').getOrNull()?.doLast {
+            logger.lifecycle("✅ 模块 ${project.name} 发布 MavenLocal 完成")
+        }
+    }.findAll {
+        it != null
+    }
+
+    doLast {
+        logger.lifecycle("✅ ${rootProject.name} 下的所有模块已发布至 MavenLocal")
+    }
+}
+
+/*
  * publishAllToCustomMaven — 一次性发布所有子项目到自定义 Maven 私库
  */
 if (publishToCustom && customMavenUrl) {
     tasks.register('publishAllToCustomMaven') {
         group = 'publishing'
         description = '将所有子项目发布到自定义 Maven 私库'
-        dependsOn subprojects.collect {
-            it.tasks.named('publishMavenPublicationToCustomRepository')
+
+        dependsOn subprojects.stream().filter {
+            !it.plugins.hasPlugin('com.android.application')
+        }.collect {
+            it.tasks.named('publishMavenPublicationToCustomRepository').getOrNull()?.doLast {
+                logger.lifecycle("✅ 模块 ${project.name} 发布 CustomMaven 完成")
+            }
+        }.findAll {
+            it != null
+        }
+
+        doLast {
+            logger.lifecycle("✅ ${rootProject.name} 下的所有模块已发布至 CustomMaven")
         }
     }
 }
 
 /*
- * publishAllToMavenCentral — 一次性发布所有子项目到 Central Portal
+ * publishAllToMavenCentral — 一次性发布所有子项目到 Central
+ * SNAPSHOT 版本走 maven-snapshots 仓库，release 版本走 Portal bundle 上传
  */
 if (publishToCentral) {
     tasks.register('publishAllToMavenCentral') {
         group = 'publishing'
-        description = '将所有子项目发布到 Maven Central Portal'
-        dependsOn subprojects.collect {
-            it.tasks.named('publishMavenPublicationToMavenCentralPortal')
+        description = '将所有子项目发布到 Maven Central（release 走 Portal，SNAPSHOT 走 maven-snapshots）'
+        dependsOn subprojects.stream().filter {
+            !it.plugins.hasPlugin('com.android.application')
+        }.collect { sub ->
+            def v = sub.hasProperty('PUBLISH_VERSION')
+                    ? sub.property('PUBLISH_VERSION')
+                    : rootProject.property('PUBLISH_VERSION')
+            def isSnapshot = v.toString().contains('SNAPSHOT')
+            def taskName = isSnapshot
+                    ? 'publishMavenPublicationToMavenCentralSnapshotRepository'
+                    : 'publishMavenPublicationToMavenCentralPortal'
+            sub.tasks.named(taskName).getOrNull()?.doLast {
+                if (isSnapshot) {
+                    // SNAPSHOT 发布成功引导提示：SNAPSHOT 不产生 deployment 记录，无需查看 Publishing 页面
+                    def pub = sub.publishing.publications.maven
+                    def repoPath = pub.groupId.toString().replace('.', '/') + '/' + pub.artifactId + '/' + pub.version
+                    logger.lifecycle("")
+                    logger.lifecycle("✅ SNAPSHOT 发布成功：${pub.groupId}:${pub.artifactId}:${pub.version}")
+                    logger.lifecycle("   SNAPSHOT 不产生 deployment 记录，无需在 Publishing 页面查看")
+                    logger.lifecycle("   检查地址：https://central.sonatype.com/repository/maven-snapshots/${repoPath}/maven-metadata.xml")
+                    logger.lifecycle("   消费仓库：https://central.sonatype.com/repository/maven-snapshots/")
+                } else {
+                    logger.lifecycle("✅ 模块 ${project.name} 发布 MavenCentral 完成")
+                }
+            }
+        }.findAll {
+            it != null
         }
+
+        doLast {
+            logger.lifecycle("✅ ${rootProject.name} 下的所有模块已发布至 MavenCentral")
+        }
+    }
+
+    // 无论是否执行 publishAllToMavenCentral，都在项目配置完成后强制实例化该任务，
+    // 使其配置闭包执行并给各模块发布任务挂上 doLast（单独发布某个模块也会打印提示）。
+    gradle.projectsEvaluated {
+        // findByName 会立即实例化任务（触发其配置闭包执行，给各模块发布任务挂 doLast），
+        // 且任务不存在时返回 null 不报错（publishAllToCustomMaven 仅 custom 模式注册）。
+        tasks.findByName('publishAllToMavenLocal')
+        tasks.findByName('publishAllToCustomMaven')
+        tasks.findByName('publishAllToMavenCentral')
     }
 }
