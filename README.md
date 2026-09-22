@@ -59,11 +59,27 @@ dependencies {
 }
 ```
 
+### Build timing diagnostics
+
+To analyse where a fat AAR build spends its time, enable the read-only diagnostics temporarily:
+
+```shell script
+./gradlew :lib-main:assembleFlavor1Debug -PfataarDiagnostics=true
+```
+
+Reports are written to `build/intermediates/fat-aar/diagnostics/<variant>.json` in every module that applies the plugin, covering per-task duration, whether the task was `UP-TO-DATE` or skipped, and the size of each embedded archive. Diagnostics are off by default: no listener is registered, and task inputs, outputs, ordering and archive contents are left untouched.
+
+Diagnostics must also be chargeable to themselves:
+
+- Everything is measured directly — task durations, `UP-TO-DATE` / skipped state and archive sizes. No extra directory walks are performed for reporting, and no sub-stages are synthesised.
+- Archives are read from the zip central directory only by default, at a cost independent of archive size. Add `-PfataarDiagnosticsDeep=true` when you also need the number of classes inside each `classes.jar`; that mode decompresses every `classes.jar`, so its cost scales with the content.
+- Every archive record carries `scanMillis`, so the scanning cost itself can be subtracted from the `explode` task duration.
+
 ### Transitive
 
 #### Local Dependency
 
-Nested local projects are packaged as layered fat AARs. Each Android library that has an `embed`, `<buildType>Embed`, `<flavor>Embed`, or `<variant>Embed` dependency applicable to the selected variant must apply `com.kezong.fat-aar` itself.
+Nested local projects are supported. Each Android library that has an `embed`, `<buildType>Embed`, `<flavor>Embed`, or `<variant>Embed` dependency applicable to the selected variant must apply `com.kezong.fat-aar` itself.
 
 ```groovy
 // :lib-main/build.gradle
@@ -79,9 +95,9 @@ dependencies {
 }
 ```
 
-For a chain `lib-main -> lib-aar -> lib-aar2`, `lib-main` consumes `lib-aar`'s **thin AAR** (the AGP `bundle<Variant>Aar` output), flattens the whole nested graph at configuration time, and collects each module's **own** classes once. The final `lib-main` AAR therefore still contains all three layers, and this applies recursively to deeper chains. A child with applicable `embed*` declarations that does not apply the plugin fails during configuration; use `implementation` or `api` instead when that child should remain a normal Android library.
+For a chain `lib-main -> lib-aar -> lib-aar2`, `lib-main` consumes `lib-aar`'s **thin AAR** (the AGP `bundle<Variant>Aar` output), flattens the whole nested graph at configuration time, and collects each module's **own** classes and non-class content once. The final `lib-main` AAR therefore still contains all three layers, and this applies recursively to deeper chains. A child with applicable `embed*` declarations that does not apply the plugin fails during configuration; use `implementation` or `api` instead when that child should remain a normal Android library.
 
-Nested `embed` consumption does not depend on intermediate final artifacts. The consuming root flattens the whole nested graph at configuration time, collects each module's **own** classes and non-class content (resources, Manifest, JNI, consumer ProGuard, local jars, SPI and Kotlin metadata) once, and performs a single merge and a single R rewrite. An intermediate module produces only a thin AAR holding its own content for the current build.
+Nested `embed` consumption does not depend on intermediate final artifacts. The consuming root flattens the whole nested graph at configuration time, collects each module's **own** classes and non-class content (resources, Manifest, JNI, consumer ProGuard, local jars, SPI and Kotlin metadata) once, and performs a single merge and a single R rewrite. Raw AAR modules and remote AAR/JAR dependencies declared by **any** node are flattened the same way: they are not Android library projects, so they cannot be traversed as nested nodes and must be collected per node instead. An intermediate module produces only a thin AAR holding its own content for the current build.
 
 Three consequences:
 

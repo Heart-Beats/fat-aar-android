@@ -82,7 +82,7 @@ dependencies {
 
 诊断本身也必须可被扣除成本，因此：
 
-- `mergeClasses` 被拆为 `mergeClasses.cleanup`、`mergeClasses.merge.unpackClassesJar`、`mergeClasses.merge.copyToJavac`、`mergeClasses.merge.writeIndex` 与总计 `mergeClasses.merge`；产物体积与类数在同一次索引遍历中顺带统计，不会为诊断额外遍历产物目录。
+- 全部为直接测量：任务耗时、`UP-TO-DATE` / 跳过状态与归档体积；不为统计额外遍历产物目录，也不拆分子阶段。
 - 归档默认只读 zip 中央目录（代价与归档大小无关）。需要 `classes.jar` 的类数时再追加 `-PfataarDiagnosticsDeep=true`：该模式会解压每个 `classes.jar` 统计类数，代价与归档内容成正比。
 - 每条归档记录带 `scanMillis`，用于把扫描自身耗时从 `explode` 任务时长里扣除。
 
@@ -90,7 +90,7 @@ dependencies {
 
 #### 本地依赖
 
-本地工程支持分层嵌套 `embed`。当 Android 子工程在当前选中变体存在适用的 `embed`、`<buildType>Embed`、`<flavor>Embed` 或 `<variant>Embed` 声明时，该子工程必须应用 `com.kezong.fat-aar`。
+本地工程支持嵌套 `embed`。当 Android 子工程在当前选中变体存在适用的 `embed`、`<buildType>Embed`、`<flavor>Embed` 或 `<variant>Embed` 声明时，该子工程必须应用 `com.kezong.fat-aar`。
 
 ```groovy
 // :lib-main/build.gradle
@@ -108,7 +108,7 @@ dependencies {
 
 对于 `lib-main -> lib-aar -> lib-aar2`，`lib-main` 消费的是 `lib-aar` 的**薄产物**（AGP `bundle<Variant>Aar` 的输出），并在配置阶段展平整棵嵌套图、逐节点采集各模块**自有**的 class。因此最终 `lib-main` AAR 同样包含三层内容，并可递归扩展到更深层级。若子工程存在当前变体适用的 `embed*` 声明却没有应用插件，构建会在配置阶段失败；若该子工程应保持普通 Android Library，请改用 `implementation` 或 `api`。
 
-嵌套 `embed` 的消费路径不依赖中间模块的最终产物：根模块在配置阶段展平整棵嵌套图，逐节点采集各模块**自有**的 class 与非类内容（资源、Manifest、JNI、consumer ProGuard、本地 jar、SPI 与 Kotlin metadata），并只做一次合并与一次 R 改写。中间模块在本次构建中只产出「仅含自身内容」的薄产物。
+嵌套 `embed` 的消费路径不依赖中间模块的最终产物：根模块在配置阶段展平整棵嵌套图，逐节点采集各模块**自有**的 class 与非类内容（资源、Manifest、JNI、consumer ProGuard、本地 jar、SPI 与 Kotlin metadata），并只做一次合并与一次 R 改写。各节点声明的**原生 AAR 模块、远程 AAR / JAR** 同样被展平——它们不是 Android Library 工程，无法作为嵌套节点遍历，必须逐节点收集。中间模块在本次构建中只产出「仅含自身内容」的薄产物。
 
 由此带来三点行为：
 
