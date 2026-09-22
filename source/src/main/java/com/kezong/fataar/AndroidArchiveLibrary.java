@@ -53,6 +53,12 @@ public class AndroidArchiveLibrary {
 
     /**
      * 合成来源：扁平图里的深层节点没有 ResolvedArtifact，只有「项目 + 选中变体 + 薄产物」。
+     *
+     * @param project     消费根项目
+     * @param moduleKey   解包目录与任务名使用的模块标识
+     * @param name        模块名，用于日志与报错
+     * @param variantName 选中变体名
+     * @param aarFile     该节点的产物文件（薄 aar，或原生/远程 aar）
      */
     public AndroidArchiveLibrary(Project project, String moduleKey, String name, String variantName, File aarFile) {
         mProject = project;
@@ -79,7 +85,11 @@ public class AndroidArchiveLibrary {
         return mName;
     }
 
-    /** Gradle 任务名安全标识，用于 explode 任务命名。 */
+    /**
+     * Gradle 任务名安全标识，用于 explode 任务命名。
+     *
+     * @return 仅含字母、数字与下划线的模块标识
+     */
     public String getTaskKey() {
         return mModuleKey.replaceAll("[^A-Za-z0-9]", "_");
     }
@@ -179,7 +189,11 @@ public class AndroidArchiveLibrary {
         this.mAarFile = aarFile;
     }
 
-    /** true 表示它是消费根的直接子模块：其薄产物已继承整棵子树的非类内容。 */
+    /**
+     * true 表示它是消费根的直接子模块：其薄产物已继承整棵子树的非类内容。
+     *
+     * @return 直接子模块时为 true，深层节点或产物级节点为 false
+     */
     public boolean isDirect() {
         return mDirect;
     }
