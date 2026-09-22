@@ -189,6 +189,11 @@ AAR是Android提供的一种官方文件形式；
 [Gradle Plugin和所需求的Gradle版本官方文档](https://developer.android.google.cn/studio/releases/gradle-plugin.html)
 
 ## 更新日志
+- [1.4.0](<https://github.com/kezong/fat-aar-android/releases/tag/v1.4.0>)
+  - 嵌套 `embed` 改为扁平聚合：消费根只做一次合并，逐节点采集各模块**自有**的 class 与非类内容，不再逐层重复合并同一批类；构建根模块不再触发中间模块的合并与重打包任务，打包耗时不再随嵌套深度线性放大。
+  - 各节点声明的原生 AAR 模块、远程 AAR / JAR 同样由消费根展平收集。
+  - R 引用改为对合并后的归档做单遍改写（带常量池预筛），取代逐层的 AGP `Transform`。
+  - 新增可选的构建耗时诊断（`-PfataarDiagnostics=true`）。
 - [1.3.8](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.8>)
   - Fix the issue that plugin cannot be used in jdk 1.8 [#371](https://github.com/kezong/fat-aar-android/issues/371)
 - [1.3.7](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.7>)

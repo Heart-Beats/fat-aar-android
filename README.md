@@ -178,6 +178,11 @@ The following link which version of Gradle is required for each version of the A
 [Plugin version and Required Gradle version](https://developer.android.google.cn/studio/releases/gradle-plugin.html)
 
 ## Version Log
+- [1.4.0](<https://github.com/kezong/fat-aar-android/releases/tag/v1.4.0>)
+  - Flatten nested `embed` consumption: the consuming root collects each node's own classes and non-class content once, instead of re-merging the same classes at every nesting level. Descendant merge and re-bundle tasks are no longer triggered when building the root, so packaging time no longer scales with nesting depth.
+  - Raw AAR modules and remote AAR/JAR dependencies declared by any node are flattened the same way.
+  - Rewrite R references in a single pass over the merged archive (with a constant-pool pre-filter), replacing the per-level AGP Transform.
+  - Add optional build timing diagnostics (`-PfataarDiagnostics=true`).
 - [1.3.8](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.8>)
   - Fix the issue that plugin cannot be used in jdk 1.8 [#371](https://github.com/kezong/fat-aar-android/issues/371)
 - [1.3.7](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.7>)
