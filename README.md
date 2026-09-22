@@ -1,7 +1,7 @@
 # fat-aar-android
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/kezong/fat-aar-android/blob/master/LICENSE)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.kezong/fat-aar/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.kezong/fat-aar)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.heart-beats/fat-aar)](https://central.sonatype.com/artifact/io.github.heart-beats/fat-aar)
 
 - [中文文档](./README_CN.md)
 
@@ -15,14 +15,14 @@ The solution of merging aar works with [AGP][3] `3.0` and higher. (Tested in AGP
 
 ### Step 1: Add classpath
 #### Add snippet below to your root build script file:
-For Maven Central (The lastest release is available on [Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.kezong/fat-aar)):
+For Maven Central (The latest release is available on [Maven Central](https://central.sonatype.com/artifact/io.github.heart-beats/fat-aar)):
 ```groovy
 buildscript {
     repositories {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.github.kezong:fat-aar:1.3.8'
+        classpath 'io.github.heart-beats:fat-aar:1.4.0'
     }
 }
 ```
@@ -183,6 +183,10 @@ The following link which version of Gradle is required for each version of the A
   - Raw AAR modules and remote AAR/JAR dependencies declared by any node are flattened the same way.
   - Rewrite R references in a single pass over the merged archive (with a constant-pool pre-filter), replacing the per-level AGP Transform.
   - Add optional build timing diagnostics (`-PfataarDiagnostics=true`).
+- [1.3.9](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.9>)
+  - Fix DataBinding metadata aggregation: the merged `data-binding/` and `data-binding-base-class-log/` entries are now produced together with the final fat AAR, so embedded modules' binding metadata is no longer dropped.
+  - Fix Kotlin metadata merge: `*.kotlin_module` files from embedded modules are merged, keeping Kotlin top-level declarations and extension functions resolvable.
+  - Fix SPI merge: `META-INF/services/*` is merged per service interface and de-duplicated, instead of the last writer silently winning.
 - [1.3.8](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.8>)
   - Fix the issue that plugin cannot be used in jdk 1.8 [#371](https://github.com/kezong/fat-aar-android/issues/371)
 - [1.3.7](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.7>)

@@ -1,6 +1,6 @@
 # fat-aar-android
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/kezong/fat-aar-android/blob/master/LICENSE)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.kezong/fat-aar/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.kezong/fat-aar)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.heart-beats/fat-aar)](https://central.sonatype.com/artifact/io.github.heart-beats/fat-aar)
 
 >**因为我不再从事研发工作，所以该仓库将不再进行维护和更新。<br>**
 >**你可以尝试按底下的步骤引入该插件，如果它在新的gradle版本中无法工作，你可以fork或者下载该仓库并且修改它，该项目的代码并不是很复杂。**
@@ -13,14 +13,14 @@
 
 #### 第一步: Apply classpath
 ##### 添加以下代码到你工程根目录下的`build.gradle`文件中:
-For Maven Central (The lastest release is available on [Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.kezong/fat-aar)):
+For Maven Central (The latest release is available on [Maven Central](https://central.sonatype.com/artifact/io.github.heart-beats/fat-aar)):
 ```groovy
 buildscript {
     repositories {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.github.kezong:fat-aar:1.3.8'
+        classpath 'io.github.heart-beats:fat-aar:1.4.0'
     }
 }
 ```
@@ -194,6 +194,10 @@ AAR是Android提供的一种官方文件形式；
   - 各节点声明的原生 AAR 模块、远程 AAR / JAR 同样由消费根展平收集。
   - R 引用改为对合并后的归档做单遍改写（带常量池预筛），取代逐层的 AGP `Transform`。
   - 新增可选的构建耗时诊断（`-PfataarDiagnostics=true`）。
+- [1.3.9](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.9>)
+  - 修复 DataBinding metadata 聚合：合并后的 `data-binding/` 与 `data-binding-base-class-log/` 会随最终 fat AAR 一并产出，不再丢失内嵌模块的绑定元数据。
+  - 修复 Kotlin metadata 合并：内嵌模块的 `*.kotlin_module` 会被合并，Kotlin 顶层声明与扩展函数不再丢失。
+  - 修复 SPI 合并：`META-INF/services/*` 由「后者覆盖前者」改为按接口合并并去重，多个模块提供同一接口实现时不再互相覆盖。
 - [1.3.8](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.8>)
   - Fix the issue that plugin cannot be used in jdk 1.8 [#371](https://github.com/kezong/fat-aar-android/issues/371)
 - [1.3.7](<https://github.com/kezong/fat-aar-android/releases/tag/v1.3.7>)
