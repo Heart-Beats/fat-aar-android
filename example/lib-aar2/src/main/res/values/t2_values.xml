@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="t2_str">str-lib-aar2</string>
+    <color name="t2_color">#FF00FF</color>
+    <dimen name="t2_dimen">16dp</dimen>
+    <bool name="t2_bool">true</bool>
+    <integer name="t2_int">42</integer>
+    <string-array name="t2_array"><item>a</item><item>b</item></string-array>
+    <integer-array name="t2_iarray"><item>1</item><item>2</item></integer-array>
+    <plurals name="t2_plurals"><item quantity="one">one</item><item quantity="other">other</item></plurals>
+    <style name="t2_style" parent="android:Theme"><item name="android:windowNoTitle">true</item></style>
+    <attr name="t2_attr" format="string"/>
+    <declare-styleable name="t2_styleable"><attr name="t2_attr"/></declare-styleable>
+    <declare-styleable name="SharedStyleable"><attr name="t2_attr"/></declare-styleable>
+    <style name="SharedStyle"><item name="android:windowFullscreen">true</item></style>
+</resources>

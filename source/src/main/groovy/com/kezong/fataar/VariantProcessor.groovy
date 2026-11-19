@@ -752,14 +752,185 @@ class VariantProcessor {
         resourceGenTask.configure {
             dependsOn(mExplodeTasks)
 
-            mProject.android.sourceSets.each { DefaultAndroidSourceSet sourceSet ->
-                if (sourceSet.name == mVariant.name) {
-                    for (archiveLibrary in mAndroidArchiveLibraries) {
-                        FatUtils.logInfo("Merge resource，Library res：${archiveLibrary.resFolder}")
-                        sourceSet.res.srcDir(archiveLibrary.resFolder)
+            // AGP 7.3.0 起，在 afterEvaluate 阶段往 sourceSet.res 添加目录不再被资源合并采纳
+            // （Google Issue 254778088 / AGP commit 21679fcb）：目录加进了 sourceSet，但
+            // MergeResources 读不到，表现为 classes、manifest 正常而 aar 内 res 为空。
+            //
+            // 该版本起改用「配置期挂固定目录 + 任务执行前复制解包资源」的方式：
+            // 固定目录已在 FatAarPlugin 配置期挂到 main sourceSet（那时 AGP 还没固化输入），
+            // 此处只需在资源合并任务执行前把 exploded-aar 下的 res 内容复制进去。
+            // 低版本 AGP 保持原有 sourceSet 方式，行为完全不变。
+            if (FatUtils.compareVersion(VersionAdapter.AGPVersion, "7.3.0") >= 0) {
+                def mergedResDir = FatAarPlugin.getMergedResDir(mProject)
+                doFirst {
+                    copyExplodedResToMergedDir(mergedResDir)
+                }
+            } else {
+                mProject.android.sourceSets.each { DefaultAndroidSourceSet sourceSet ->
+                    if (sourceSet.name == mVariant.name) {
+                        for (archiveLibrary in mAndroidArchiveLibraries) {
+                            FatUtils.logInfo("Merge resource，Library res：${archiveLibrary.resFolder}")
+                            sourceSet.res.srcDir(archiveLibrary.resFolder)
+                        }
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 把各 embed 库解包后的 res 内容复制到本变体专属的汇总目录。
+     * 用复制而非直接 srcDir，是为了绕开 AGP 7.3 对 variant 创建后 sourceSet 变更的忽略。
+     */
+    private void copyExplodedResToMergedDir(File targetDir) {
+        if (targetDir.exists()) {
+            targetDir.deleteDir()
+        }
+        targetDir.mkdirs()
+
+        // 1) 非 values 目录直接复制：同名文件按依赖顺序后来者覆盖，与 AGP 资源合并语义一致
+        mAndroidArchiveLibraries.each { archiveLibrary ->
+            File resDir = archiveLibrary.resFolder
+            if (resDir == null || !resDir.exists()) {
+                return
+            }
+            FatUtils.logInfo("Merge resource (copy)，Library res：${resDir}")
+            mProject.copy { spec ->
+                spec.from(resDir)
+                spec.into(targetDir)
+                spec.exclude('values/**')
+            }
+        }
+
+        // 2) values 目录必须按 XML 节点合并。
+        //    直接复制会因各库都存在 values/values.xml 而互相覆盖，实测只剩最后一个库的
+        //    string/color/style，前面各库的资源全部丢失。
+        mergeValuesDirs(targetDir)
+    }
+
+    /**
+     * 合并各库的 res/values/*.xml。
+     *
+     * 按「文件名 → 源文件列表」分组后逐个文件合并：同名节点（标签 + name）以后出现的为准，
+     * 与 AGP 资源合并的覆盖顺序保持一致；declare-styleable 这类复合节点整体替换。
+     */
+    private void mergeValuesDirs(File targetDir) {
+        Map<String, List<File>> valuesByFileName = new LinkedHashMap<>()
+        Set<String> seenResDirs = new HashSet<>()
+        mAndroidArchiveLibraries.each { archiveLibrary ->
+            File resDir = archiveLibrary.resFolder
+            if (resDir == null || !resDir.exists()) {
+                return
+            }
+            // 同一份解包目录只处理一次：嵌套 embed 时集合里可能出现重复项，
+            // 重复处理会让同一个 Node 被 append 到自身，导致整个文件后续节点丢失
+            if (!seenResDirs.add(resDir.absolutePath)) {
+                return
+            }
+            File valuesDir = new File(resDir, "values")
+            if (!valuesDir.exists()) {
+                return
+            }
+            valuesDir.listFiles({ File f -> f.isFile() && f.name.endsWith('.xml') } as FileFilter)?.each { File f ->
+                valuesByFileName.computeIfAbsent(f.name) { [] }.add(f)
+            }
+        }
+
+        File targetValuesDir = new File(targetDir, "values")
+        valuesByFileName.each { String fileName, List<File> files ->
+            Map<String, Node> mergedNodes = new LinkedHashMap<>()
+            int anonymousSeq = 0
+            files.each { File f ->
+                def resources
+                try {
+                    resources = new XmlParser().parse(f)
+                } catch (Exception e) {
+                    FatUtils.logInfo("Parse values failed [${f}]: ${e.message}")
+                    return
+                }
+                int nodeCount = 0
+                resources.children().each { node ->
+                    try {
+                        String tag = node.name()
+                        def attrName = node.attribute('name')
+                        // 无 name 的节点（如 <item type="id">）用序号占位，保证不互相吞掉
+                        String key = attrName ? "${tag}@${attrName}".toString() : "${tag}@#${anonymousSeq++}".toString()
+                        Node existing = mergedNodes[key]
+                        // 与 AGP/aapt2 保持一致：style、declare-styleable、plurals 是集合型资源，
+                        // 同名时按子项合并而不是整体替换，否则后者会把前者已声明的 item/attr 覆盖掉
+                        if (existing != null && isMergeableNode(tag)) {
+                            mergeChildNodes(existing, node, childKeyAttrOf(tag))
+                        } else {
+                            mergedNodes.put(key, node)
+                        }
+                        nodeCount++
+                    } catch (Exception e) {
+                        // 单个节点失败不能拖垮整个文件，否则同文件后续的 attr/styleable 会全部丢失
+                        FatUtils.logInfo("Merge values node failed [${f}][${node?.name()}]: ${e.message}")
+                    }
+                }
+                FatUtils.logInfo("Read values [${f.name}] from ${f.parentFile?.parentFile?.parentFile?.name}: ${nodeCount} node(s)")
+            }
+            if (mergedNodes.isEmpty()) {
+                return
+            }
+            targetValuesDir.mkdirs()
+            Node root = new Node(null, 'resources')
+            mergedNodes.values().each { root.append(it) }
+            StringWriter writer = new StringWriter()
+            XmlNodePrinter printer = new XmlNodePrinter(new PrintWriter(writer))
+            printer.preserveWhitespace = false
+            printer.print(root)
+            new File(targetValuesDir, fileName).text =
+                    '<?xml version="1.0" encoding="utf-8"?>\n' + writer.toString()
+            FatUtils.logInfo("Merged values [${fileName}]: ${mergedNodes.size()} node(s) from ${files.size()} file(s)")
+        }
+    }
+
+    /**
+     * 是否为集合型 values 资源（同名时需要按子项合并，而非整体覆盖）。
+     * 与 aapt2 的处理一致：style 是 item 的集合、declare-styleable 是 attr 引用的集合、
+     * plurals 是 quantity 的集合。
+     */
+    private static boolean isMergeableNode(String tag) {
+        return tag == 'style' || tag == 'declare-styleable' || tag == 'plurals'
+    }
+
+    /** 集合型资源的子项去重键：plurals 用 quantity，其余用 name */
+    private static String childKeyAttrOf(String tag) {
+        return tag == 'plurals' ? 'quantity' : 'name'
+    }
+
+    /**
+     * 把 source 的子项并入 target：同键子项由后者覆盖，新子项追加。
+     */
+    private static void mergeChildNodes(Node target, Node source, String keyAttr) {
+        // 防御：同一个 Node 被重复喂入（mAndroidArchiveLibraries 含重复项时会出现），
+        // 此时 append 自身会破坏节点结构，直接跳过
+        if (target.is(source)) {
+            return
+        }
+        Map<String, Node> byKey = new LinkedHashMap<>()
+        target.children().each { Node c ->
+            def k = c.attribute(keyAttr)
+            if (k != null) {
+                byKey.put("${c.name()}@${k}", c)
+            }
+        }
+        source.children().each { Node c ->
+            def k = c.attribute(keyAttr)
+            if (k == null) {
+                // 无键子项（少见）直接追加，避免丢弃
+                target.append(c)
+                return
+            }
+            String childKey = "${c.name()}@${k}"
+            Node old = byKey[childKey]
+            if (old != null) {
+                target.remove(old)
+            }
+            target.append(c)
+            byKey.put(childKey, c)
         }
     }
 

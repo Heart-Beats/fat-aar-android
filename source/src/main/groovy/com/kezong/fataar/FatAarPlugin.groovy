@@ -39,8 +39,40 @@ class FatAarPlugin implements Plugin<Project> {
         FatAarDiagnostics.attach(project)
         project.extensions.create(FatAarExtension.NAME, FatAarExtension)
         createConfigurations()
+        registerMergedResDir(project)
         FatUtils.logAnytime("fat-aar plugin applied to project '${project.path}' (build: ${getBuildDateTime()})")
         registerProjectsEvaluatedHandler()
+    }
+
+    /**
+     * 配置期先把 fat-aar 的资源汇总目录挂到 main sourceSet。
+     *
+     * 背景：AGP 7.3.0 起，variant 创建之后再往 sourceSet.res 追加目录不会被资源合并采纳
+     * （Google Issue 254778088），实测在 afterEvaluate 阶段给 flavor1Release 这类组合
+     * sourceSet 追加同样无效，只有 apply 阶段挂到 main 才生效。因此这里挂一个固定目录，
+     * 解包资源由 VariantProcessor.processResources 在资源合并任务执行前复制进来。
+     *
+     * 关于多变体：Gradle 同一模块内的任务串行执行，且该目录位于本模块自己的 buildDir 下，
+     * 因此不存在不同变体、不同模块互相覆盖的问题。
+     * 低版本 AGP 上该目录为空，不参与有效合并，行为不变。
+     */
+    private void registerMergedResDir(Project project) {
+        project.plugins.withId('com.android.library') {
+            try {
+                def resDir = getMergedResDir(project)
+                project.android.sourceSets.getByName('main').res.srcDir(resDir)
+                FatUtils.logInfo("Register merged res dir: ${resDir}")
+            } catch (Exception e) {
+                FatUtils.logInfo("Register merged res dir failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * fat-aar 的资源汇总目录（位于本模块 buildDir 下，模块之间天然隔离）。
+     */
+    static File getMergedResDir(Project project) {
+        return new File(project.buildDir, "intermediates/fat-aar/merged-res")
     }
 
     private static String getBuildDateTime() {

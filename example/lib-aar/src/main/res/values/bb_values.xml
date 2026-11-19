@@ -1,0 +1,2107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:ns1="http://schemas.android.com/tools">
+    <string-array name="rainbow_drawable">
+        <item>@drawable/head_round_bg0</item>
+    </string-array>
+    <attr format="integer" name="arc_draw_angle"/>
+    <attr format="integer" name="arc_start_angle"/>
+    <attr format="dimension" name="box_height"/>
+    <attr format="dimension" name="box_radius"/>
+    <attr format="dimension" name="box_width"/>
+    <attr format="dimension" name="left_bottom_radius"/>
+    <attr format="dimension" name="left_top_radius"/>
+    <attr format="color" name="light_color"/>
+    <attr format="boolean" name="light_show"/>
+    <attr format="dimension" name="line_radius"/>
+    <attr format="reference" name="postSplashScreenTheme"/>
+    <attr format="color" name="progress_color"/>
+    <attr format="color" name="progress_color_background"/>
+    <attr format="integer" name="progress_max"/>
+    <attr format="dimension" name="progress_radius"/>
+    <attr format="dimension" name="progress_size"/>
+    <attr format="integer" name="progress_value"/>
+    <attr format="dimension" name="right_bottom_radius"/>
+    <attr format="dimension" name="right_top_radius"/>
+    <attr format="dimension" name="splashScreenIconSize"/>
+    <attr format="color" name="stroke_color"/>
+    <attr format="boolean" name="stroke_show"/>
+    <attr format="dimension" name="stroke_width"/>
+    <attr format="color" name="text_color"/>
+    <attr format="integer" name="text_decimal_num"/>
+    <attr format="boolean" name="text_show"/>
+    <attr format="dimension" name="text_size"/>
+    <attr format="color|reference" name="uikit_dividerColor"/>
+    <attr format="reference" name="uikit_dividerViewStyle"/>
+    <attr format="reference" name="windowSplashScreenAnimatedIcon"/>
+    <attr format="integer" name="windowSplashScreenAnimationDuration"/>
+    <attr format="color" name="windowSplashScreenBackground"/>
+    <attr format="color" name="windowSplashScreenIconBackgroundColor"/>
+    <color name="FF4ED7C2">#FF4ED7C2</color>
+    <color name="FFE9FFFC">#FFE9FFFC</color>
+    <color name="FFF13E3E">#F13E3E</color>
+    <color name="base_qmsg_cta_gradient_end">#2255E2</color>
+    <color name="base_qmsg_cta_gradient_start">#4080FE</color>
+    <color name="base_qmsg_feature_card_bg">#0F2D71FF</color>
+    <color name="base_qmsg_overlay">#80000000</color>
+    <color name="base_qmsg_sheet_gradient_bottom">#002D71FF</color>
+    <color name="base_qmsg_sheet_gradient_top">#262D71FF</color>
+    <color name="base_qmsg_shield_lightning">#FFD23F</color>
+    <color name="base_qmsg_subtitle">#9799A8</color>
+    <color name="base_qmsg_title_highlight">#2D71FF</color>
+    <color name="base_qmsg_title_primary">#2F2F46</color>
+    <color name="base_quantum_banner_card_bg">#DCE1F6</color>
+    <color name="base_quantum_banner_card_bg_end">#DCE1F6</color>
+    <color name="base_quantum_banner_card_bg_start">#D7E2F3</color>
+    <color name="base_quantum_banner_cta_activating_bg">#80FFFFFF</color>
+    <color name="base_quantum_banner_cta_activating_text">#9799A8</color>
+    <color name="base_quantum_banner_cta_end">#2FD6FF</color>
+    <color name="base_quantum_banner_cta_start">#6974FF</color>
+    <color name="base_quantum_banner_desc">#CCFFFFFF</color>
+    <color name="base_quantum_banner_hero_end">#1F3C8C</color>
+    <color name="base_quantum_banner_hero_overlay">#4D000B2E</color>
+    <color name="base_quantum_banner_hero_start">#0B1A3A</color>
+    <color name="base_quantum_banner_indicator_off">#66FFFFFF</color>
+    <color name="base_quantum_banner_indicator_on">#FFFFFF</color>
+    <color name="base_quantum_banner_label">#2A2A6F</color>
+    <color name="base_quantum_banner_progress_fill_end">#2FD6FF</color>
+    <color name="base_quantum_banner_progress_fill_start">#6974FF</color>
+    <color name="base_quantum_banner_progress_track">#40FFFFFF</color>
+    <color name="base_quantum_banner_title">#FFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="blue01">#ff7b7de5</color>
+    <color name="callshow_cccccc">#FFCCCCCC</color>
+    <color name="color1">#3C3C3C</color>
+    <color name="color11">#FFFFFF</color>
+    <color name="color13">#FF9D22</color>
+    <color name="color13_19C160">#19C160</color>
+    <color name="color13_19C160_10">#E8F8EF</color>
+    <color name="color13_FF862E">#FF9D22</color>
+    <color name="color14">#008BF9</color>
+    <color name="color15">#888888</color>
+    <color name="color16">#5D5F74</color>
+    <color name="color17">#9799A8</color>
+    <color name="color18">#2D71FF</color>
+    <color name="color19">#00B230</color>
+    <color name="color2">#CCCCCC</color>
+    <color name="color20">#003CBB</color>
+    <color name="color21">#7a7a85</color>
+    <color name="color3">#316EF4</color>
+    <color name="color4">#888888</color>
+    <color name="color5">#FFFFFF</color>
+    <color name="color51_1">#5EA2ED</color>
+    <color name="color51_2">#316EF4</color>
+    <color name="color52_1">#5EA2ED</color>
+    <color name="color52_2">#3C7AF9</color>
+    <color name="color53">#FFFFFF</color>
+    <color name="color54">#FFFFFF</color>
+    <color name="color55">#FFFFFF</color>
+    <color name="color56">#CCCCCC</color>
+    <color name="color57">#316EF4</color>
+    <color name="color57_10">#1a3689f1</color>
+    <color name="color57_50">#803689F1</color>
+    <color name="color58">#FFFFFF</color>
+    <color name="color59">#F6F6F6</color>
+    <color name="color6">#F13E3E</color>
+    <color name="color60">#DDEDFF</color>
+    <color name="color61">#F6F6F6</color>
+    <color name="color62">#F1F7FE</color>
+    <color name="color63">#F3F3F3</color>
+    <color name="color65">#FEF4E6</color>
+    <color name="color66">#3C3C3C</color>
+    <color name="color67">#F1F7FE</color>
+    <color name="color68">#888888</color>
+    <color name="color69">#FAFAFA</color>
+    <color name="color7">#BFBFBF</color>
+    <color name="color70">#EEEEEE</color>
+    <color name="color71">#E93914</color>
+    <color name="color72">#bfbfbf</color>
+    <color name="color72_10">#1abfbfbf</color>
+    <color name="color73">#6BCD80</color>
+    <color name="color74">#D9E6F6</color>
+    <color name="color75">#FEF3E3</color>
+    <color name="color78">#CCCCCC</color>
+    <color name="color7_50">#55BFBFBF</color>
+    <color name="color8">#3689F1</color>
+    <color name="color80">#D8D8D8</color>
+    <color name="color81">#FF1E32</color>
+    <color name="color83">#3689F1</color>
+    <color name="color86">#F6F6F6</color>
+    <color name="color87">#F6F6F6</color>
+    <color name="color88">#FFFFFF</color>
+    <color name="color89">#F6F7FA</color>
+    <color name="color90">#FAFAFA</color>
+    <color name="color91">#B5B5B5</color>
+    <color name="color92">#2D71FF</color>
+    <color name="color93">#B9BCC7</color>
+    <color name="color94">#9799A8</color>
+    <color name="color95">#F8F8F8</color>
+    <color name="color96">#2F2F46</color>
+    <color name="color97">#F7AB5E</color>
+    <color name="color98">#E8E8E8</color>
+    <color name="colorAccent">#39A6FF</color>
+    <color name="colorAccentTransparent">#4D39A6FF</color>
+    <color name="color_102D71FF_102D71FF">#102D71FF</color>
+    <color name="color_173254">#DDEDFF</color>
+    <color name="color_1f1f2e">#1F1F2E</color>
+    <color name="color_2F2F46">#2F2F46</color>
+    <color name="color_33f98d8b">#33F98D8B</color>
+    <color name="color_3c3c3c">#3C3C3C </color>
+    <color name="color_88_100">#ff888888</color>
+    <color name="color_949494">#949494</color>
+    <color name="color_96000000">#96000000</color>
+    <color name="color_9799A8">#9799A8</color>
+    <color name="color_F0F0F2">#F0F0F2</color>
+    <color name="color_F4F4F6">#F4F4F6</color>
+    <color name="color_btn_2F2F46">#2F2F46</color>
+    <color name="color_btn_3000000">#30000000</color>
+    <color name="color_btn_f0f0f2">#FFF0F0F2</color>
+    <color name="color_btn_ff2d71ff">#ff2d71ff</color>
+    <color name="color_card">#ff2F2F46</color>
+    <color name="color_close_all">#ff9799A8</color>
+    <color name="color_d5e7ff">#D5E7FF</color>
+    <color name="color_f0f0f2">#FFF0F0F2</color>
+    <color name="color_f6f7fa">#F6F7FA</color>
+    <color name="color_f7e3df">#F7E3DF</color>
+    <color name="color_f7e5e1">#F7E5E1</color>
+    <color name="color_ff1f1f2e">#ff1f1f2e</color>
+    <color name="color_ffffff_000000">#FFFFFF</color>
+    <color name="color_file_read_title">#1F1F2E</color>
+    <color name="color_group_msg_read_status_dialog_bg">#FFFFFF</color>
+    <color name="color_light_red">#FF8C69</color>
+    <color name="color_line_ffe8e8e8">#ffe8e8e8</color>
+    <color name="color_test_008888_bg">#008888</color>
+    <color name="color_test_00ffff_bg">#00FFFF</color>
+    <color name="color_test_5f9ea0_bg">#5F9EA0</color>
+    <color name="color_test_6495ed_bg">#6495ED</color>
+    <color name="color_test_7fff00_bg">#7FFF00</color>
+    <color name="color_test_7fffd4_bg">#7FFFD4</color>
+    <color name="color_test_9932CC_bg">#9932CC</color>
+    <color name="color_test_A9A9A9_bg">#A9A9A9</color>
+    <color name="color_test_BDB76B_bg">#BDB76B</color>
+    <color name="color_test_E9967A_bg">#E9967A</color>
+    <color name="color_test_FF1493_bg">#FF1493</color>
+    <color name="color_test_FF8C00_bg">#FF8C00</color>
+    <color name="color_test_FFD700_bg">#FFD700</color>
+    <color name="color_test_b8860b_bg">#B8860B</color>
+    <color name="color_test_black_bg">#000000</color>
+    <color name="color_test_dc143c_bg">#DC143C</color>
+    <color name="color_test_ff7f50_bg">#FF7F50</color>
+    <color name="color_test_ffe4c4_bg">#FFE4C4</color>
+    <color name="color_test_white_bg">#FFFFFF</color>
+    <color name="color_toast_bg">#CC000000</color>
+    <color name="color_toast_text">#FFFFFF</color>
+    <color name="main_bottom_title">#1F1F2E</color>
+    <color name="progress_bg">#F1F1F1</color>
+    <color name="progress_bg_2">#02ffe3</color>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="th_464646">#FFFFFF</color>
+    <color name="th_EAECF0">#EAECF0</color>
+    <color name="th_blue_000000">#000000</color>
+    <color name="th_blue_000000_88">#66000000</color>
+    <color name="th_blue_000000_cc">#CC000000</color>
+    <color name="th_blue_0e2236">#0E2236</color>
+    <color name="th_blue_1AFF862E">#1AFF862E</color>
+    <color name="th_blue_1AFF862E2">#FFF2EA</color>
+    <color name="th_blue_1F1F2E">#1F1F2E</color>
+    <color name="th_blue_1f1f2e">#1F1F2E</color>
+    <color name="th_blue_1f1f2e_2">#1F1F2E</color>
+    <color name="th_blue_2d71ff">#2D71FF</color>
+    <color name="th_blue_2d71ff1a">#1A2D71FF</color>
+    <color name="th_blue_2d71ff_66">#662D71FF</color>
+    <color name="th_blue_2f2f45">#2F2F45</color>
+    <color name="th_blue_2f2f46">#2F2F46</color>
+    <color name="th_blue_3689f1">#3689f1</color>
+    <color name="th_blue_3977F8">#3977F8</color>
+    <color name="th_blue_3C3C3C">#3C3C3C</color>
+    <color name="th_blue_3C3C3C_tip">#3C3C3C</color>
+    <color name="th_blue_3C7AF9">#3C7AF9</color>
+    <color name="th_blue_4ed7c3">#4ED7C3</color>
+    <color name="th_blue_5EA2ED">#5EA2ED</color>
+    <color name="th_blue_5b5d72">#5b5d72</color>
+    <color name="th_blue_5d5f73">#5D5F74</color>
+    <color name="th_blue_5d5f74">#5D5F74</color>
+    <color name="th_blue_5db561">#5DB561</color>
+    <color name="th_blue_687CA7">#687CA7</color>
+    <color name="th_blue_787878">#787878</color>
+    <color name="th_blue_7e90b6">#7E90B6</color>
+    <color name="th_blue_80000000">#80000000</color>
+    <color name="th_blue_802d71ff">#802D71FF</color>
+    <color name="th_blue_807F7F7F">#807F7F7F</color>
+    <color name="th_blue_809bbce6">#809BBCE6</color>
+    <color name="th_blue_888888">#888888</color>
+    <color name="th_blue_8f91a1">#8F91A1</color>
+    <color name="th_blue_9799A8">#9799A8</color>
+    <color name="th_blue_E8F1FF">#E8F1FF</color>
+    <color name="th_blue_FF862E">#FF862E</color>
+    <color name="th_blue_FF9799A8">#FF9799A8</color>
+    <color name="th_blue_FFF1F6FF">#FFF1F6FF</color>
+    <color name="th_blue_FFFFF5E7">#FFFFF5E7</color>
+    <color name="th_blue_b9bcc7">#B9BCC7</color>
+    <color name="th_blue_bcbcbc">#FFBCBCBC</color>
+    <color name="th_blue_bfbfbf_bfbfbf">#FFBFBFBF</color>
+    <color name="th_blue_cccccb">#CCCCCC</color>
+    <color name="th_blue_cccccc">#CCCCCC</color>
+    <color name="th_blue_ddedff">#DDEDFF</color>
+    <color name="th_blue_e3ebfa">#E3EBFA</color>
+    <color name="th_blue_e8e8e8">#E8E8E8</color>
+    <color name="th_blue_e93914">#E93914</color>
+    <color name="th_blue_e93914_10">#1AE93914</color>
+    <color name="th_blue_eaf3fd">#eaf3fd</color>
+    <color name="th_blue_ecf3fa">#ECF3FA</color>
+    <color name="th_blue_eff0f0">#EFF0F0</color>
+    <color name="th_blue_eff0f1">#EFF0F1</color>
+    <color name="th_blue_f13e3e">#f13e3e</color>
+    <color name="th_blue_f1f7fe">#F1F7FE</color>
+    <color name="th_blue_f5f6f9">#F5F6F9</color>
+    <color name="th_blue_f5f9fe">#F5F9FE</color>
+    <color name="th_blue_f6f6f6">#F6F6F6</color>
+    <color name="th_blue_f6f6f6_202020">#F6F6F6</color>
+    <color name="th_blue_f6f7fa">#F6F7FA</color>
+    <color name="th_blue_f6f7fb">#F6F7FB</color>
+    <color name="th_blue_f98d8b">#F98D8B</color>
+    <color name="th_blue_fafafa">#FAFAFA</color>
+    <color name="th_blue_ff7a7a85">#FF7A7A85</color>
+    <color name="th_blue_ffacaebf">#FFACAEBF</color>
+    <color name="th_blue_ffaf41">#FFAF41</color>
+    <color name="th_blue_fff1f1f1">#FFF1F1F1</color>
+    <color name="th_blue_fff7ab5e">#FFF7AB5E</color>
+    <color name="th_blue_fffffd">#FFFFFD</color>
+    <color name="th_blue_fffffe">#FFFFFE</color>
+    <color name="th_blue_ffffff">#FFFFFF</color>
+    <color name="th_blue_ffffff_202020">#ffffff</color>
+    <color name="th_blue_ffffff_2e2e2e">#FFFFFF</color>
+    <color name="th_blue_ffffff_77">#77FFFFFF</color>
+    <color name="th_blue_ffffff_white">#FFFFFF</color>
+    <color name="th_blue_tv_1_1f1f2e">#5D5F74</color>
+    <color name="th_d7e5f0">#D7E5F0</color>
+    <color name="th_f6f7fa">#FFFFFF</color>
+    <color name="th_main_0d417b">#0D417B</color>
+    <color name="th_main_0d417c">#0D417C</color>
+    <color name="th_main_5f8bb9">#5F8BB9</color>
+    <color name="th_main_bottom">#FFFFFF</color>
+    <color name="th_main_bottom_bg">#F6F6F6</color>
+    <color name="the_blue_encryption_mode">#5D5F74</color>
+    <color name="the_skip">#992D71FF</color>
+    <color name="transparent">#00000000</color>
+    <color name="transparent15">#26000000</color>
+    <color name="transparent20">#33000000</color>
+    <color name="uikit_dividerColor">@color/th_blue_cccccc</color>
+    <color name="white">#FFFFFF</color>
+    <color name="white_">#FFFFFF</color>
+    <dimen name="base_qmsg_cta_radius">11dp</dimen>
+    <dimen name="base_qmsg_feature_card_radius">16dp</dimen>
+    <dimen name="base_qmsg_feature_icon_radius">10dp</dimen>
+    <dimen name="base_qmsg_sheet_radius">7dp</dimen>
+    <dimen name="base_quantum_banner_card_padding">12dp</dimen>
+    <dimen name="base_quantum_banner_card_radius">13dp</dimen>
+    <dimen name="base_quantum_banner_cta_height">30dp</dimen>
+    <dimen name="base_quantum_banner_cta_icon_size">68dp</dimen>
+    <dimen name="base_quantum_banner_cta_label_margin_start">8dp</dimen>
+    <dimen name="base_quantum_banner_cta_label_size">18sp</dimen>
+    <dimen name="base_quantum_banner_cta_radius">4dp</dimen>
+    <dimen name="base_quantum_banner_cta_row_padding_horizontal">14dp</dimen>
+    <dimen name="base_quantum_banner_cta_row_padding_vertical">8dp</dimen>
+    <dimen name="base_quantum_banner_cta_row_top_margin">12dp</dimen>
+    <dimen name="base_quantum_banner_cta_text_size">13sp</dimen>
+    <dimen name="base_quantum_banner_cta_width">88dp</dimen>
+    <dimen name="base_quantum_banner_desc_margin_top">10dp</dimen>
+    <dimen name="base_quantum_banner_desc_size">12sp</dimen>
+    <dimen name="base_quantum_banner_hero_height">230dp</dimen>
+    <dimen name="base_quantum_banner_hero_radius">16dp</dimen>
+    <dimen name="base_quantum_banner_indicator_bottom_margin">16dp</dimen>
+    <dimen name="base_quantum_banner_indicator_size">6dp</dimen>
+    <dimen name="base_quantum_banner_indicator_spacing">4dp</dimen>
+    <dimen name="base_quantum_banner_page_padding_horizontal">20dp</dimen>
+    <dimen name="base_quantum_banner_page_padding_vertical">22dp</dimen>
+    <dimen name="base_quantum_banner_progress_height">3dp</dimen>
+    <dimen name="base_quantum_banner_title_margin_top">20dp</dimen>
+    <dimen name="base_quantum_banner_title_size">19sp</dimen>
+    <dimen name="design_bottom_navigation_active_item_max_width" ns1:ignore="ResourceName">168dp
+    </dimen>
+    <dimen name="design_bottom_navigation_active_text_size" ns1:ignore="ResourceName">18sp</dimen>
+    <dimen name="design_bottom_navigation_elevation" ns1:ignore="ResourceName">8dp</dimen>
+    <dimen name="design_bottom_navigation_height" ns1:ignore="ResourceName">72dp</dimen>
+    <dimen name="design_bottom_navigation_item_max_width" ns1:ignore="ResourceName">96dp</dimen>
+    <dimen name="design_bottom_navigation_item_min_width" ns1:ignore="ResourceName">56dp</dimen>
+    <dimen name="design_bottom_navigation_margin" ns1:ignore="ResourceName">14dp</dimen>
+    <dimen name="design_bottom_navigation_shadow_height" ns1:ignore="ResourceName">1dp</dimen>
+    <dimen name="design_bottom_navigation_text_size" ns1:ignore="ResourceName">22sp</dimen>
+    <dimen name="dp_0">0dp</dimen>
+    <dimen name="dp_1">1dp</dimen>
+    <dimen name="dp_10">10dp</dimen>
+    <dimen name="dp_100">100dp</dimen>
+    <dimen name="dp_104">104dp</dimen>
+    <dimen name="dp_108">108dp</dimen>
+    <dimen name="dp_11">11dp</dimen>
+    <dimen name="dp_110">110dp</dimen>
+    <dimen name="dp_112">112dp</dimen>
+    <dimen name="dp_115">115dp</dimen>
+    <dimen name="dp_119">119dp</dimen>
+    <dimen name="dp_12">12dp</dimen>
+    <dimen name="dp_120">120dp</dimen>
+    <dimen name="dp_121">121dp</dimen>
+    <dimen name="dp_123">123dp</dimen>
+    <dimen name="dp_128">123dp</dimen>
+    <dimen name="dp_13">13dp</dimen>
+    <dimen name="dp_133">133dp</dimen>
+    <dimen name="dp_134">134dp</dimen>
+    <dimen name="dp_136">136dp</dimen>
+    <dimen name="dp_138">138dp</dimen>
+    <dimen name="dp_14">14dp</dimen>
+    <dimen name="dp_148">148dp</dimen>
+    <dimen name="dp_15">15dp</dimen>
+    <dimen name="dp_150">150dp</dimen>
+    <dimen name="dp_158">158dp</dimen>
+    <dimen name="dp_16">16dp</dimen>
+    <dimen name="dp_160">160dp</dimen>
+    <dimen name="dp_164">164dp</dimen>
+    <dimen name="dp_167">167dp</dimen>
+    <dimen name="dp_17">17dp</dimen>
+    <dimen name="dp_170">170dp</dimen>
+    <dimen name="dp_174">174dp</dimen>
+    <dimen name="dp_18">18dp</dimen>
+    <dimen name="dp_187">187dp</dimen>
+    <dimen name="dp_189">189dp</dimen>
+    <dimen name="dp_19">19dp</dimen>
+    <dimen name="dp_2">2dp</dimen>
+    <dimen name="dp_20">20dp</dimen>
+    <dimen name="dp_200">200dp</dimen>
+    <dimen name="dp_208">208dp</dimen>
+    <dimen name="dp_209">209dp</dimen>
+    <dimen name="dp_21">21dp</dimen>
+    <dimen name="dp_219">219dp</dimen>
+    <dimen name="dp_22">22dp</dimen>
+    <dimen name="dp_225">225dp</dimen>
+    <dimen name="dp_226">226dp</dimen>
+    <dimen name="dp_227">227dp</dimen>
+    <dimen name="dp_23">23dp</dimen>
+    <dimen name="dp_230">230dp</dimen>
+    <dimen name="dp_24">24dp</dimen>
+    <dimen name="dp_25">25dp</dimen>
+    <dimen name="dp_26">26dp</dimen>
+    <dimen name="dp_263">263dp</dimen>
+    <dimen name="dp_27">27dp</dimen>
+    <dimen name="dp_270">270dp</dimen>
+    <dimen name="dp_28">28dp</dimen>
+    <dimen name="dp_280">280dp</dimen>
+    <dimen name="dp_285">285dp</dimen>
+    <dimen name="dp_29">29dp</dimen>
+    <dimen name="dp_293">293dp</dimen>
+    <dimen name="dp_3">3dp</dimen>
+    <dimen name="dp_30">30dp</dimen>
+    <dimen name="dp_300">300dp</dimen>
+    <dimen name="dp_301">301dp</dimen>
+    <dimen name="dp_304">304dp</dimen>
+    <dimen name="dp_31">31dp</dimen>
+    <dimen name="dp_319">319dp</dimen>
+    <dimen name="dp_32">32dp</dimen>
+    <dimen name="dp_320">320dp</dimen>
+    <dimen name="dp_33">33dp</dimen>
+    <dimen name="dp_34">34dp</dimen>
+    <dimen name="dp_35">35dp</dimen>
+    <dimen name="dp_36">36dp</dimen>
+    <dimen name="dp_37">37dp</dimen>
+    <dimen name="dp_38">38dp</dimen>
+    <dimen name="dp_384">384dp</dimen>
+    <dimen name="dp_386">386dp</dimen>
+    <dimen name="dp_39">39dp</dimen>
+    <dimen name="dp_4">4dp</dimen>
+    <dimen name="dp_40">40dp</dimen>
+    <dimen name="dp_406">406dp</dimen>
+    <dimen name="dp_42">42dp</dimen>
+    <dimen name="dp_43">43dp</dimen>
+    <dimen name="dp_44">44dp</dimen>
+    <dimen name="dp_45">45dp</dimen>
+    <dimen name="dp_46">46dp</dimen>
+    <dimen name="dp_47">47dp</dimen>
+    <dimen name="dp_48">48dp</dimen>
+    <dimen name="dp_49">49dp</dimen>
+    <dimen name="dp_5">5dp</dimen>
+    <dimen name="dp_50">50dp</dimen>
+    <dimen name="dp_52">52dp</dimen>
+    <dimen name="dp_53">53dp</dimen>
+    <dimen name="dp_54">54dp</dimen>
+    <dimen name="dp_55">55dp</dimen>
+    <dimen name="dp_56">56dp</dimen>
+    <dimen name="dp_57">57dp</dimen>
+    <dimen name="dp_58">58dp</dimen>
+    <dimen name="dp_6">6dp</dimen>
+    <dimen name="dp_60">60dp</dimen>
+    <dimen name="dp_61">61dp</dimen>
+    <dimen name="dp_63">63dp</dimen>
+    <dimen name="dp_64">64dp</dimen>
+    <dimen name="dp_66">66dp</dimen>
+    <dimen name="dp_67">67dp</dimen>
+    <dimen name="dp_68">68dp</dimen>
+    <dimen name="dp_7">7dp</dimen>
+    <dimen name="dp_70">70dp</dimen>
+    <dimen name="dp_72">72dp</dimen>
+    <dimen name="dp_73">73dp</dimen>
+    <dimen name="dp_74">74dp</dimen>
+    <dimen name="dp_75">75dp</dimen>
+    <dimen name="dp_77">77dp</dimen>
+    <dimen name="dp_78">78dp</dimen>
+    <dimen name="dp_79">79dp</dimen>
+    <dimen name="dp_8">8dp</dimen>
+    <dimen name="dp_80">80dp</dimen>
+    <dimen name="dp_81">81dp</dimen>
+    <dimen name="dp_82">82dp</dimen>
+    <dimen name="dp_83">83dp</dimen>
+    <dimen name="dp_85">85dp</dimen>
+    <dimen name="dp_86">86dp</dimen>
+    <dimen name="dp_89">89dp</dimen>
+    <dimen name="dp_9">9dp</dimen>
+    <dimen name="dp_90">90dp</dimen>
+    <dimen name="dp_93">93dp</dimen>
+    <dimen name="dp_94">94dp</dimen>
+    <dimen name="dp_99">99dp</dimen>
+    <dimen name="mine_panal_sp_10">10sp</dimen>
+    <dimen name="mine_panal_sp_11">11sp</dimen>
+    <dimen name="mine_panal_sp_12">12sp</dimen>
+    <dimen name="mine_panal_sp_13">13sp</dimen>
+    <dimen name="mine_panal_sp_14">14sp</dimen>
+    <dimen name="mine_panal_sp_15">15sp</dimen>
+    <dimen name="mine_panal_sp_16">16sp</dimen>
+    <dimen name="mine_panal_sp_17">17sp</dimen>
+    <dimen name="mine_panal_sp_18">18sp</dimen>
+    <dimen name="mine_panal_sp_19">19sp</dimen>
+    <dimen name="mine_panal_sp_20">20sp</dimen>
+    <dimen name="mine_panal_sp_21">21sp</dimen>
+    <dimen name="mine_panal_sp_22">22sp</dimen>
+    <dimen name="mine_panal_sp_23">23sp</dimen>
+    <dimen name="mine_panal_sp_24">24sp</dimen>
+    <dimen name="mine_panal_sp_25">25sp</dimen>
+    <dimen name="public_font_11sp">11sp</dimen>
+    <dimen name="public_font_12sp">12sp</dimen>
+    <dimen name="public_font_13sp">13sp</dimen>
+    <dimen name="public_font_14sp">14sp</dimen>
+    <dimen name="public_font_15sp">15sp</dimen>
+    <dimen name="public_font_16sp">16sp</dimen>
+    <dimen name="public_font_17sp">17sp</dimen>
+    <dimen name="public_font_19sp">19sp</dimen>
+    <dimen name="public_font_21sp">21sp</dimen>
+    <dimen name="public_height_45dp">45dp</dimen>
+    <dimen name="public_height_50dp">50dp</dimen>
+    <dimen name="public_height_90dp">90dp</dimen>
+    <dimen name="size_0">0dp</dimen>
+    <dimen name="size_0_3_5">0.35dp</dimen>
+    <dimen name="size_0_5">0.5dp</dimen>
+    <dimen name="size_0_6_5">0.65dp</dimen>
+    <dimen name="size_0_6_7">0.67dp</dimen>
+    <dimen name="size_1">1dp</dimen>
+    <dimen name="size_10">10dp</dimen>
+    <dimen name="size_100">100dp</dimen>
+    <dimen name="size_108">108dp</dimen>
+    <dimen name="size_11">11dp</dimen>
+    <dimen name="size_110">110dp</dimen>
+    <dimen name="size_112">112dp</dimen>
+    <dimen name="size_115">115dp</dimen>
+    <dimen name="size_119">119dp</dimen>
+    <dimen name="size_12">12dp</dimen>
+    <dimen name="size_120">120dp</dimen>
+    <dimen name="size_123">123dp</dimen>
+    <dimen name="size_13">13dp</dimen>
+    <dimen name="size_130">130dp</dimen>
+    <dimen name="size_133">133dp</dimen>
+    <dimen name="size_134">134dp</dimen>
+    <dimen name="size_136">136dp</dimen>
+    <dimen name="size_138">138dp</dimen>
+    <dimen name="size_14">14dp</dimen>
+    <dimen name="size_148">148dp</dimen>
+    <dimen name="size_15">15dp</dimen>
+    <dimen name="size_150">150dp</dimen>
+    <dimen name="size_16">16dp</dimen>
+    <dimen name="size_160">160dp</dimen>
+    <dimen name="size_166">166dp</dimen>
+    <dimen name="size_167">167dp</dimen>
+    <dimen name="size_17">17dp</dimen>
+    <dimen name="size_170">170dp</dimen>
+    <dimen name="size_18">18dp</dimen>
+    <dimen name="size_187">187dp</dimen>
+    <dimen name="size_189">189dp</dimen>
+    <dimen name="size_19">19dp</dimen>
+    <dimen name="size_1px">1px</dimen>
+    <dimen name="size_2">2dp</dimen>
+    <dimen name="size_20">20dp</dimen>
+    <dimen name="size_200">200dp</dimen>
+    <dimen name="size_208">208dp</dimen>
+    <dimen name="size_21">21dp</dimen>
+    <dimen name="size_22">22dp</dimen>
+    <dimen name="size_225">225dp</dimen>
+    <dimen name="size_227">227dp</dimen>
+    <dimen name="size_23">23dp</dimen>
+    <dimen name="size_24">24dp</dimen>
+    <dimen name="size_25">25dp</dimen>
+    <dimen name="size_26">26dp</dimen>
+    <dimen name="size_263">263dp</dimen>
+    <dimen name="size_27">27dp</dimen>
+    <dimen name="size_270">270dp</dimen>
+    <dimen name="size_28">28dp</dimen>
+    <dimen name="size_280">280dp</dimen>
+    <dimen name="size_285">285dp</dimen>
+    <dimen name="size_287">287dp</dimen>
+    <dimen name="size_29">29dp</dimen>
+    <dimen name="size_296">296dp</dimen>
+    <dimen name="size_297">297dp</dimen>
+    <dimen name="size_3">3dp</dimen>
+    <dimen name="size_30">30dp</dimen>
+    <dimen name="size_300">300dp</dimen>
+    <dimen name="size_301">301dp</dimen>
+    <dimen name="size_304">304dp</dimen>
+    <dimen name="size_31">31dp</dimen>
+    <dimen name="size_319">319dp</dimen>
+    <dimen name="size_32">32dp</dimen>
+    <dimen name="size_33">33dp</dimen>
+    <dimen name="size_34">34dp</dimen>
+    <dimen name="size_35">35dp</dimen>
+    <dimen name="size_36">36dp</dimen>
+    <dimen name="size_37">37dp</dimen>
+    <dimen name="size_38">38dp</dimen>
+    <dimen name="size_384">384dp</dimen>
+    <dimen name="size_386">386dp</dimen>
+    <dimen name="size_390">390dp</dimen>
+    <dimen name="size_4">4dp</dimen>
+    <dimen name="size_40">40dp</dimen>
+    <dimen name="size_400">400dp</dimen>
+    <dimen name="size_404">404dp</dimen>
+    <dimen name="size_406">406dp</dimen>
+    <dimen name="size_42">42dp</dimen>
+    <dimen name="size_43">43dp</dimen>
+    <dimen name="size_44">44dp</dimen>
+    <dimen name="size_45">45dp</dimen>
+    <dimen name="size_46">46dp</dimen>
+    <dimen name="size_47">47dp</dimen>
+    <dimen name="size_48">48dp</dimen>
+    <dimen name="size_5">5dp</dimen>
+    <dimen name="size_50">50dp</dimen>
+    <dimen name="size_52">52dp</dimen>
+    <dimen name="size_53">53dp</dimen>
+    <dimen name="size_54">54dp</dimen>
+    <dimen name="size_55">55dp</dimen>
+    <dimen name="size_56">56dp</dimen>
+    <dimen name="size_57">57dp</dimen>
+    <dimen name="size_58">58dp</dimen>
+    <dimen name="size_6">6dp</dimen>
+    <dimen name="size_60">60dp</dimen>
+    <dimen name="size_64">64dp</dimen>
+    <dimen name="size_66">66dp</dimen>
+    <dimen name="size_67">67dp</dimen>
+    <dimen name="size_68">68dp</dimen>
+    <dimen name="size_7">7dp</dimen>
+    <dimen name="size_70">70dp</dimen>
+    <dimen name="size_72">72dp</dimen>
+    <dimen name="size_74">74dp</dimen>
+    <dimen name="size_75">75dp</dimen>
+    <dimen name="size_77">77dp</dimen>
+    <dimen name="size_78">78dp</dimen>
+    <dimen name="size_79">79dp</dimen>
+    <dimen name="size_8">8dp</dimen>
+    <dimen name="size_80">80dp</dimen>
+    <dimen name="size_81">81dp</dimen>
+    <dimen name="size_82">82dp</dimen>
+    <dimen name="size_83">83dp</dimen>
+    <dimen name="size_86">86dp</dimen>
+    <dimen name="size_87">87dp</dimen>
+    <dimen name="size_89">89dp</dimen>
+    <dimen name="size_9">9dp</dimen>
+    <dimen name="size_90">90dp</dimen>
+    <dimen name="size_93">93dp</dimen>
+    <dimen name="size_94">94dp</dimen>
+    <dimen name="size_99">99dp</dimen>
+    <dimen name="sp_1">1sp</dimen>
+    <dimen name="sp_10">10sp</dimen>
+    <dimen name="sp_100">100sp</dimen>
+    <dimen name="sp_108">108sp</dimen>
+    <dimen name="sp_11">11sp</dimen>
+    <dimen name="sp_110">110sp</dimen>
+    <dimen name="sp_112">112sp</dimen>
+    <dimen name="sp_115">115sp</dimen>
+    <dimen name="sp_119">119sp</dimen>
+    <dimen name="sp_12">12sp</dimen>
+    <dimen name="sp_120">120sp</dimen>
+    <dimen name="sp_123">123sp</dimen>
+    <dimen name="sp_13">13sp</dimen>
+    <dimen name="sp_133">133sp</dimen>
+    <dimen name="sp_134">134sp</dimen>
+    <dimen name="sp_136">136sp</dimen>
+    <dimen name="sp_138">138sp</dimen>
+    <dimen name="sp_14">14sp</dimen>
+    <dimen name="sp_148">148sp</dimen>
+    <dimen name="sp_15">15sp</dimen>
+    <dimen name="sp_150">150sp</dimen>
+    <dimen name="sp_16">16sp</dimen>
+    <dimen name="sp_160">160sp</dimen>
+    <dimen name="sp_167">167sp</dimen>
+    <dimen name="sp_17">17sp</dimen>
+    <dimen name="sp_170">170sp</dimen>
+    <dimen name="sp_18">18sp</dimen>
+    <dimen name="sp_187">187sp</dimen>
+    <dimen name="sp_189">189sp</dimen>
+    <dimen name="sp_19">19sp</dimen>
+    <dimen name="sp_2">2sp</dimen>
+    <dimen name="sp_20">20sp</dimen>
+    <dimen name="sp_200">200sp</dimen>
+    <dimen name="sp_208">208sp</dimen>
+    <dimen name="sp_21">21sp</dimen>
+    <dimen name="sp_22">22sp</dimen>
+    <dimen name="sp_225">225sp</dimen>
+    <dimen name="sp_227">227sp</dimen>
+    <dimen name="sp_23">23sp</dimen>
+    <dimen name="sp_24">24sp</dimen>
+    <dimen name="sp_25">25sp</dimen>
+    <dimen name="sp_26">26sp</dimen>
+    <dimen name="sp_263">263sp</dimen>
+    <dimen name="sp_27">27sp</dimen>
+    <dimen name="sp_270">270sp</dimen>
+    <dimen name="sp_28">28sp</dimen>
+    <dimen name="sp_280">280sp</dimen>
+    <dimen name="sp_285">285sp</dimen>
+    <dimen name="sp_29">29sp</dimen>
+    <dimen name="sp_3">3sp</dimen>
+    <dimen name="sp_30">30sp</dimen>
+    <dimen name="sp_301">301sp</dimen>
+    <dimen name="sp_304">304sp</dimen>
+    <dimen name="sp_31">31sp</dimen>
+    <dimen name="sp_319">319sp</dimen>
+    <dimen name="sp_32">32sp</dimen>
+    <dimen name="sp_33">33sp</dimen>
+    <dimen name="sp_34">34sp</dimen>
+    <dimen name="sp_35">35sp</dimen>
+    <dimen name="sp_36">36sp</dimen>
+    <dimen name="sp_37">37sp</dimen>
+    <dimen name="sp_38">38sp</dimen>
+    <dimen name="sp_384">384sp</dimen>
+    <dimen name="sp_386">386sp</dimen>
+    <dimen name="sp_4">4sp</dimen>
+    <dimen name="sp_40">40sp</dimen>
+    <dimen name="sp_406">406sp</dimen>
+    <dimen name="sp_42">42sp</dimen>
+    <dimen name="sp_43">43sp</dimen>
+    <dimen name="sp_44">44sp</dimen>
+    <dimen name="sp_45">45sp</dimen>
+    <dimen name="sp_46">46sp</dimen>
+    <dimen name="sp_47">47sp</dimen>
+    <dimen name="sp_48">48sp</dimen>
+    <dimen name="sp_5">5sp</dimen>
+    <dimen name="sp_50">50sp</dimen>
+    <dimen name="sp_52">52sp</dimen>
+    <dimen name="sp_53">53sp</dimen>
+    <dimen name="sp_54">54sp</dimen>
+    <dimen name="sp_55">55sp</dimen>
+    <dimen name="sp_56">56sp</dimen>
+    <dimen name="sp_57">57sp</dimen>
+    <dimen name="sp_58">58sp</dimen>
+    <dimen name="sp_6">6sp</dimen>
+    <dimen name="sp_60">60sp</dimen>
+    <dimen name="sp_64">64sp</dimen>
+    <dimen name="sp_66">66sp</dimen>
+    <dimen name="sp_67">67sp</dimen>
+    <dimen name="sp_68">68sp</dimen>
+    <dimen name="sp_7">7sp</dimen>
+    <dimen name="sp_70">70sp</dimen>
+    <dimen name="sp_72">72sp</dimen>
+    <dimen name="sp_74">74sp</dimen>
+    <dimen name="sp_75">75sp</dimen>
+    <dimen name="sp_77">77sp</dimen>
+    <dimen name="sp_78">78sp</dimen>
+    <dimen name="sp_8">8sp</dimen>
+    <dimen name="sp_80">80sp</dimen>
+    <dimen name="sp_81">81sp</dimen>
+    <dimen name="sp_82">82sp</dimen>
+    <dimen name="sp_83">83sp</dimen>
+    <dimen name="sp_86">86sp</dimen>
+    <dimen name="sp_89">89sp</dimen>
+    <dimen name="sp_9">9sp</dimen>
+    <dimen name="sp_90">90sp</dimen>
+    <dimen name="sp_93">93sp</dimen>
+    <dimen name="sp_94">94sp</dimen>
+    <dimen name="sp_99">99sp</dimen>
+    <dimen name="text_size_10">10sp</dimen>
+    <dimen name="text_size_11">11sp</dimen>
+    <dimen name="text_size_12">12sp</dimen>
+    <dimen name="text_size_13">13sp</dimen>
+    <dimen name="text_size_14">14sp</dimen>
+    <dimen name="text_size_15">15sp</dimen>
+    <dimen name="text_size_16">16sp</dimen>
+    <dimen name="text_size_17">17sp</dimen>
+    <dimen name="text_size_18">18sp</dimen>
+    <dimen name="text_size_20">20sp</dimen>
+    <dimen name="text_size_21">21sp</dimen>
+    <dimen name="text_size_22">22sp</dimen>
+    <dimen name="text_size_23">23sp</dimen>
+    <dimen name="text_size_24">24sp</dimen>
+    <dimen name="text_size_27">27sp</dimen>
+    <dimen name="text_size_30">30sp</dimen>
+    <dimen name="text_size_33">33sp</dimen>
+    <dimen name="text_size_36">36sp</dimen>
+    <dimen name="text_size_40">40sp</dimen>
+    <dimen name="text_size_5">5sp</dimen>
+    <dimen name="text_size_8">8sp</dimen>
+    <dimen name="text_size_9">9sp</dimen>
+    <dimen name="title_bar_height">50dp</dimen>
+    <item name="expand_collapse" type="id"/>
+    <item name="expand_ll" type="id"/>
+    <item name="expand_text" type="id"/>
+    <item name="expandable_text" type="id"/>
+    <string name="activate_confirm">确认</string>
+    <string name="add_robot">添加机器人</string>
+    <string name="add_robot_detail">机器人详情</string>
+    <string name="already_open_clound_meeting">当前组织已开通量子云会议试用</string>
+    <string name="already_save_text">文件已保存</string>
+    <string name="app_name">量子密信</string>
+    <string name="app_no_premission">请到【我的-关于-个人信息与权限-系统权限管理】中开启相关权限</string>
+    <string name="background_import">后台转存</string>
+    <string name="base_a_missed_call">您有一条未接来电</string>
+    <string name="base_account_logout_hint">账号登出提示</string>
+    <string name="base_add_to_group_tip">对方与你非好友或同事。请先发送好友验证请求，对方同意后，你才能邀请其加入群聊</string>
+    <string name="base_after">后</string>
+    <string name="base_afternoon">下午</string>
+    <string name="base_all">全部</string>
+    <string name="base_already_root">当前设备已root，禁止使用APP</string>
+    <string name="base_app_authorization_info_fail">授权信息失败</string>
+    <string name="base_arrive_forword_max">已达转发上限</string>
+    <string name="base_audio">音频</string>
+    <string name="base_authorized">已授权</string>
+    <string name="base_avcall_tip">对方与你非好友或同事。请先发送好友验证请求，对方同意后，才能开始通话</string>
+    <string name="base_background_download">后台下载</string>
+    <string name="base_before_dawn">凌晨</string>
+    <string name="base_before_yestoday">前天</string>
+    <string name="base_box">保险柜</string>
+    <string name="base_buds_binded">当前账号与已连接密语耳机绑定账号【%s】不同，需切换登录密语耳机对应账号才能使用加解密功能。</string>
+    <string name="base_buds_unbind">检测到已连接新的量子密语耳机，是否立即进行绑定？</string>
+    <string name="base_buds_unbind_head">密语耳机已连接</string>
+    <string name="base_call_audio_video">拨打音视频</string>
+    <string name="base_call_no_network_tip">当前无法连接网络，可检查网络设置是否正常</string>
+    <string name="base_cell_day">天</string>
+    <string name="base_cell_hour">小时</string>
+    <string name="base_cell_in_min">1分钟内</string>
+    <string name="base_cell_min">分钟</string>
+    <string name="base_cell_seconds">秒</string>
+    <string name="base_chat_file">聊天中的文件</string>
+    <string name="base_check_number_fail">校验手机号失败，当前量子SIM卡手机尾号为：%s</string>
+    <string name="base_city">市</string>
+    <string name="base_clear_session_data">同时清空会话记录</string>
+    <string name="base_click_to_fingerprint_verification">点击进行指纹验证</string>
+    <string name="base_cloud_meeting_not_open_error">无法加入，请开通量子云会议业务后重试!</string>
+    <string name="base_collect_fail_expired">收藏失败，请重试</string>
+    <string name="base_consent_agreement_list_error">同意协议信息失败</string>
+    <string name="base_contact_permission_tip">在「设置-应用-量子密信-权限」中开启通讯录权限，以正常使用查看本地联系人、添加手机联系人好友、搜索手机联系人功能</string>
+    <string name="base_content_empty">暂无内容</string>
+    <string name="base_continue_go">继续前往</string>
+    <string name="base_crect_time">准时</string>
+    <string name="base_crect_time_before_1d">提前1天</string>
+    <string name="base_crect_time_before_1h">提前1小时</string>
+    <string name="base_crect_time_before_30m">提前30分钟</string>
+    <string name="base_crect_time_before_5m">提前5分钟</string>
+    <string name="base_curr_version_is_last">当前已是最新版本~</string>
+    <string name="base_current_day_call">当天-拨打的音视频</string>
+    <string name="base_custom_def">自定义</string>
+    <string name="base_daily_tip">[日程提醒]</string>
+    <string name="base_data_empty">数据为空</string>
+    <string name="base_data_encode_call">加密通话</string>
+    <string name="base_data_fail">请求数据失败</string>
+    <string name="base_data_init_error">数据库初始化异常，请重试</string>
+    <string name="base_data_parse_error">数据解析异常，请重试</string>
+    <string name="base_data_pramas_error">参数msgId异常，请重试</string>
+    <string name="base_day">日</string>
+    <string name="base_decode_fail">解密失败，点击重试</string>
+    <string name="base_default">默认</string>
+    <string name="base_delete">删除</string>
+    <string name="base_delete_msg_error">删除消息失败</string>
+    <string name="base_dial">拨打</string>
+    <string name="base_dialog_agree">同意</string>
+    <string name="base_dialog_agree_and_continue">同意并继续</string>
+    <string name="base_dialog_not_use">暂不使用</string>
+    <string name="base_dialog_refuse">拒绝</string>
+    <string name="base_download">下载</string>
+    <string name="base_download_decode">下载并解密</string>
+    <string name="base_download_fail">下载失败</string>
+    <string name="base_download_fail_retry">下载失败 ，点击重试</string>
+    <string name="base_download_fail_retry_tip">下载失败 %s，点击重试</string>
+    <string name="base_download_file_error">文件异常，请重新打开</string>
+    <string name="base_download_file_no_sup">不支持当前格式文件预览</string>
+    <string name="base_download_file_no_support">不支持此文件格式</string>
+    <string name="base_download_ing">下载中</string>
+    <string name="base_download_open_title">其它应用打开</string>
+    <string name="base_download_save_fail">文件保存失败</string>
+    <string name="base_download_save_suc">文件保存成功</string>
+    <string name="base_download_saved">文件已保存</string>
+    <string name="base_download_see_image">查看原图</string>
+    <string name="base_download_see_image2">查看原图</string>
+    <string name="base_download_service">量子密信下载服务</string>
+    <string name="base_download_service_tip">用于显示用户更新应用时的通知</string>
+    <string name="base_download_suc">下载成功</string>
+    <string name="base_downloading_updates">正在下载更新</string>
+    <string name="base_emotion_get_fail">获取表情失败，请重试</string>
+    <string name="base_emotion_get_type_fail">获取消息类型失败，请重试</string>
+    <string name="base_encode_fail">加密%s失败</string>
+    <string name="base_encode_module">请选择加密模式</string>
+    <string name="base_entry_app">进入应用</string>
+    <string name="base_ex_points">兑换%s积分</string>
+    <string name="base_feature_tip">对方尚未开通业务</string>
+    <string name="base_file">文档</string>
+    <string name="base_file_expired_no_save_as">文件已过期，不可转存</string>
+    <string name="base_file_no_forward_local">当前文件不支持转发</string>
+    <string name="base_file_no_permission">仅预览文件无法被选中</string>
+    <string name="base_file_no_saved_local">当前文件不支持保存</string>
+    <string name="base_file_op_tip">加密导入后是否删除源文件？</string>
+    <string name="base_file_open_fail_retry">打开文件失败 ，点击重试</string>
+    <string name="base_file_open_fail_retry_tip">打开文件失败 %s 点击重试</string>
+    <string name="base_file_preview">文件预览</string>
+    <string name="base_file_selected">已选：</string>
+    <string name="base_file_selected_tip">最多只能选择%d个。</string>
+    <string name="base_five_text">五</string>
+    <string name="base_forward_fail_expired">文件已过期，无法转发</string>
+    <string name="base_four_text">四</string>
+    <string name="base_get_agreement_list_error">获取协议信息失败</string>
+    <string name="base_get_app_authorization_info_fail">获取授权信息失败</string>
+    <string name="base_get_privacy_agreement_update_error">获取隐私协议更新失败</string>
+    <string name="base_get_user_info_error">获取用户信息失败</string>
+    <string name="base_get_work_list_info_fail">获取工作台信息失败</string>
+    <string name="base_go_to_setting">前往设置</string>
+    <string name="base_group_from">群成员均来自“%s”，无法添加组织外成员</string>
+    <string name="base_group_invite_reason">邀请理由不能为空</string>
+    <string name="base_group_invite_reason_tip">进群，请输入邀请理由。</string>
+    <string name="base_group_invite_who">你邀请了</string>
+    <string name="base_group_no_id">不限制群成员身份</string>
+    <string name="base_group_revoke_msg">“%s”撤回了一条消息</string>
+    <string name="base_hand_up">挂断</string>
+    <string name="base_has_call_tip">您有一条通话邀请</string>
+    <string name="base_has_fr">好友申请</string>
+    <string name="base_has_fr_tip">您有一条好友申请</string>
+    <string name="base_has_fr_tip_hide">你收到了1条消息</string>
+    <string name="base_has_selected_number">已选择（%d)</string>
+    <string name="base_i_know">我知道了</string>
+    <string name="base_ignore_update">忽略更新</string>
+    <string name="base_image">图片</string>
+    <string name="base_image_expired">图片已过期</string>
+    <string name="base_image_expired_no_edit">图片已过期，无法编辑</string>
+    <string name="base_image_verify_close">关闭页面</string>
+    <string name="base_image_verify_reload">重新加载</string>
+    <string name="base_incoming_call_noty">来电通知</string>
+    <string name="base_incoming_message_tip">您收到%d条信息</string>
+    <string name="base_init_again">重新初始化</string>
+    <string name="base_init_error">初始化异常，请重试</string>
+    <string name="base_init_kehu">AI客服助手</string>
+    <string name="base_install_now">立即安装</string>
+    <string name="base_install_qt">您尚未安装量子安全盾</string>
+    <string name="base_install_qt_check">量子安全盾连接异常，请检查</string>
+    <string name="base_install_qt_to_go">检测到您手机没有安装量子安全盾，是否前去安装</string>
+    <string name="base_internal_storage_devices">/内部存储设备</string>
+    <string name="base_known">知道了</string>
+    <string name="base_like_fail">收藏失败，请重试</string>
+    <string name="base_liked">收藏</string>
+    <string name="base_load_arrow_up">收起</string>
+    <string name="base_load_more">加载更多</string>
+    <string name="base_loading">加载中</string>
+    <string name="base_loading_tip">加载中</string>
+    <string name="base_login_account_error">您的账号业务状态异常，无法正常使用。</string>
+    <string name="base_login_invaledate">登录失效，请重新登录！</string>
+    <string name="base_login_out_suc">退出成功</string>
+    <string name="base_login_timeout">登录过期，请重新登录！</string>
+    <string name="base_meeting_not_supported">当前版本不支持加入会议</string>
+    <string name="base_message_noty">信息通知</string>
+    <string name="base_missed_call">未接来电</string>
+    <string name="base_month">月</string>
+    <string name="base_morning">上午</string>
+    <string name="base_need_not_protect">无需保护</string>
+    <string name="base_net_data_error_tip">数据异常，请检查网络</string>
+    <string name="base_net_download_pros">下载进度</string>
+    <string name="base_net_error_tip">网络不给力，请稍后再试</string>
+    <string name="base_net_fail_retry">网络不给力，请稍后再试</string>
+    <string name="base_net_req_ing">请求网络中</string>
+    <string name="base_net_tip">当前网络不给力，请检查网络设置</string>
+    <string name="base_net_to_volte">对方暂时无法接听是否转为VoLTE通话</string>
+    <string name="base_net_volte">VoLTE通话</string>
+    <string name="base_new_op_error_tip">操作失败，请稍后重试</string>
+    <string name="base_new_version_downloaded">新版本已下载</string>
+    <string name="base_new_version_downloaded_tip">已为你下载好新版本安装包，是否立即安装？</string>
+    <string name="base_nice_hint">温馨提示</string>
+    <string name="base_night">晚上</string>
+    <string name="base_no_add_self">不能添加自己为好友</string>
+    <string name="base_no_dial">未接电话</string>
+    <string name="base_no_message">查无此消息</string>
+    <string name="base_no_net_tip">网络连接失败，请检查你的网络后重试！</string>
+    <string name="base_no_search_who">未查询到联系人</string>
+    <string name="base_no_set">未设置</string>
+    <string name="base_noon">中午</string>
+    <string name="base_normal_group">普通群</string>
+    <string name="base_not">否</string>
+    <string name="base_not_found_app">未找到分享该格式的应用</string>
+    <string name="base_not_friend_or_colleague_hint">对方与你非好友或同事，请先发送好友验证请求，对方通过验证后，才能聊天。发送好友验证</string>
+    <string name="base_not_handled">不存在不处理</string>
+    <string name="base_not_rec_code">未识别到二维码</string>
+    <string name="base_not_register_mx_tip">您拨打的号码尚未注册量子密信，请使用其他方式联系</string>
+    <string name="base_not_satisfied">不满足</string>
+    <string name="base_not_send">暂不发送</string>
+    <string name="base_not_upload">所以不上传</string>
+    <string name="base_not_view_message">无法查看此类消息</string>
+    <string name="base_notification_title_message_reminder">消息提醒</string>
+    <string name="base_one_text">一</string>
+    <string name="base_only_selected_file">您只能选择文件夹</string>
+    <string name="base_op_error_tip">操作失败，请稍后再试</string>
+    <string name="base_opponent_already_your_friend">对方已是你的好友</string>
+    <string name="base_opponent_already_your_friend2">已存在好友关系</string>
+    <string name="base_option_camera">拍照上传</string>
+    <string name="base_option_select_image">选择图片</string>
+    <string name="base_other">其他</string>
+    <string name="base_party_member">党员</string>
+    <string name="base_password_modified_logout_hint">由于您的密码被管理员修改，已强制登出您的账号，如有疑问请联系单位管理员。</string>
+    <string name="base_permission_access_all_files">所有文件访问权限</string>
+    <string name="base_permission_bluetooth_not_granted_hint">蓝牙权限未开启</string>
+    <string name="base_permission_calender_not_granted_hint">日历权限未开启</string>
+    <string name="base_permission_call_phone_log_not_granted_hint">读取通话记录权限未开启</string>
+    <string name="base_permission_call_phone_not_granted_hint">拨打电话权限未开启</string>
+    <string name="base_permission_camera">摄像头权限</string>
+    <string name="base_permission_camera_not_granted_hint">摄像头权限未开启</string>
+    <string name="base_permission_change">权限变更</string>
+    <string name="base_permission_contact_not_granted_hint">通讯录权限未开启</string>
+    <string name="base_permission_file_des">当你使用APP时，会在消息、相册、扫一扫、修改头像、文件保存、群公告、日历日程、意见反馈、导出个人信息，以及综合审批、任务督办、汇报、投票上传附件时授权存储权限。不授权上述权限，不影响APP其他功能使用。</string>
+    <string name="base_permission_file_not_granted_hint">存储权限授权说明</string>
+    <string name="base_permission_hint_bold_permission">消息/来电通知权限</string>
+    <string name="base_permission_hint_bold_reminder">「我的-个人设置-新消息提醒」</string>
+    <string name="base_permission_hint_content">请前往「我的-个人设置-新消息提醒」页面，查看消息/来电通知权限开启状态，并按照引导图示步骤开启对应权限</string>
+    <string name="base_permission_hint_title">消息/来电通知权限未开启</string>
+    <string name="base_permission_hint_toast">请前往「我的-关于-个人信息与权限-系统权限管理」开启相关权限</string>
+    <string name="base_permission_location">位置访问权限</string>
+    <string name="base_permission_location_not_granted_hint">位置权限未开启</string>
+    <string name="base_permission_media">媒体库访问权限</string>
+    <string name="base_permission_media_ct">人工客服媒体库访问权限</string>
+    <string name="base_permission_media_not_granted_hint">媒体库权限未开启</string>
+    <string name="base_permission_microphone_not_granted_hint">麦克风权限未开启</string>
+    <string name="base_permission_no_bluetooth">在「设置-应用-量子密信-权限」中开启附近设备权限，以正常使用蓝牙通话功能</string>
+    <string name="base_permission_no_calender">在「设置-应用-量子密信-权限」中开启读取日程权限，以正常使用功能</string>
+    <string name="base_permission_no_call_phone">
+        在「设置-应用-量子密信-权限」中开启拨打电话权限，以正常使用拨打电话功能。若接听手机来电，会自动挂断量子密信电话，确保信息安全。</string>
+    <string name="base_permission_no_call_phone_log">
+        在「设置-应用-量子密信-权限」中开启读取通话记录权限，以正常使用查看通话记录功能。若接听手机来电，会自动挂断量子密信电话，确保信息安全。</string>
+    <string name="base_permission_no_camera_scan">在「设置-应用-量子密信-权限」中开启摄像头权限，以正常使用呼叫或接听视频通话、发送视频消息、以及量子云会议的相关操作（发起/加入会议、会中开启摄像头）功能。</string>
+    <string name="base_permission_no_camera_tip">请开启相机权限</string>
+    <string name="base_permission_no_location">在「设置-应用-量子密信-权限」中开启位置权限，以正常使用位置共享、考勤打卡功能。</string>
+    <string name="base_permission_no_mic">在「设置-应用-量子密信-权限」中开启麦克风权限，以正常使用呼叫或接听语音通话、发送语音消息、发送视频消息、以及量子云会议的相关操作（发起/加入会议、会中开启麦克风）功能。</string>
+    <string name="base_permission_no_notification">在「设置-应用-量子密信-权限」中开启通知权限，以正常访问会议时保活功能。</string>
+    <string name="base_permission_no_picture">在「设置-应用-量子密信-权限」中开启媒体库权限，以正常使用聊天、AI客服助手发送或保存图片和视频消息、扫一扫选择图片、个人信息设置或保存头像 、加密便签选择图片、保存群二维码、保存会议室预约二维码、保存量子云会议二维码、向智能助理发送图片和视频消息的功能。</string>
+    <string name="base_permission_no_read_phone_state">在「设置-应用-量子密信-权限」中开启电话权限，以正常使用音视频通话功能。若接听手机来电，会自动挂断量子密信电话，确保信息安全。</string>
+    <string name="base_permission_no_record_audio_tip">请开启麦克风权限</string>
+    <string name="base_permission_no_storage">在「设置-应用-量子密信-权限」中开启存储权限，以正常使用消息、相册、扫一扫、修改头像、内容保存、发送与保存文件、群公告、上传日程附件、意见反馈、导出个人信息，以及综合审批、任务督办、汇报、投票上传附件功能。</string>
+    <string name="base_permission_no_window">在「设置-应用-量子密信-权限」中开启悬浮窗权限，以正常使用功能</string>
+    <string name="base_permission_notification_not_granted_hint">通知权限未开启</string>
+    <string name="base_permission_open">权限开通</string>
+    <string name="base_permission_read_phone_state_not_granted_hint">电话权限未开启</string>
+    <string name="base_permission_record_audio_continue">继续拍摄</string>
+    <string name="base_permission_storage_not_granted_hint">存储权限未开启</string>
+    <string name="base_permission_system_location_not_enabled">量子密信不能确定你的位置，你可以通过以下操作提高量子密信的定位精准度：在位置设置中打开GPS和无线网络</string>
+    <string name="base_permission_tip_title">权限未开启</string>
+    <string name="base_permission_window_not_granted_hint">悬浮窗未开启</string>
+    <string name="base_phone_file">手机中的文件</string>
+    <string name="base_play_fail">播放失败</string>
+    <string name="base_please_fingerprint_verification">请指纹验证</string>
+    <string name="base_please_select_unlock_page">请选择需要解锁的页面</string>
+    <string name="base_points_are_full">当前统计积分已满，无需继续上传</string>
+    <string name="base_privacy_policy_user_agreement">《隐私政策》与《服务协议》</string>
+    <string name="base_prohibit_jump_tips">据用户投诉及量子密信网址安全中心检测，该网页包含违法或违规内容。为维护绿色上网环境，已停止访问。</string>
+    <string name="base_prohibit_jump_title">已停止访问该网页</string>
+    <string name="base_province">省</string>
+    <string name="base_pull_load_fail">加载失败</string>
+    <string name="base_pull_load_finish">加载完成</string>
+    <string name="base_pull_load_record">下拉加载记录</string>
+    <string name="base_pull_loading">正在加载...</string>
+    <string name="base_pull_release">释放立即加载</string>
+    <string name="base_push_hide_content_preview">[您有一条消息]</string>
+    <string name="base_qmsg_action_activate">去激活</string>
+    <string name="base_qmsg_action_consult">立刻咨询</string>
+    <string name="base_qmsg_action_retry">重试</string>
+    <string name="base_qmsg_action_switch_account">切换账号</string>
+    <string name="base_qmsg_copy_account_mismatch">登录账号与加密介质绑定账号不匹配，无法加解密</string>
+    <string name="base_qmsg_copy_card_invalid">量子SIM卡已失效，请前往号码归属地的电信营业厅更换量子SIM卡。</string>
+    <string name="base_qmsg_copy_card_invalid_soft">量子SIM卡已失效，请更换量子SIM卡；前往加密介质管理激活量子软模块。</string>
+    <string name="base_qmsg_copy_client_unsupported">当前端暂不支持加解密能力</string>
+    <string name="base_qmsg_copy_client_unsupported_soft">前往【我的】-【安全中心】-【加密介质管理】中激活量子软模块</string>
+    <string name="base_qmsg_copy_device_unsupported">当前设备不支持 OMA 协议，无法加解密，请更换设备。</string>
+    <string name="base_qmsg_copy_key_exhausted">量子密钥已用尽，请拨打400-811-6666咨询密钥续充详情。</string>
+    <string name="base_qmsg_copy_key_exhausted_soft">量子密钥已用尽，请拨打400-811-6666咨询密钥续充详情。前往加密介质管理激活量子软模块。</string>
+    <string name="base_qmsg_copy_medium_empty">将量子SIM卡放在卡槽1</string>
+    <string name="base_qmsg_copy_medium_empty_soft">将量子SIM卡放在卡槽1；前往【我的】-【安全中心】-【加密介质管理】中激活【量子软模块】</string>
+    <string name="base_qmsg_copy_network_error">网络连接失败，请检查你的网络后重试</string>
+    <string name="base_qmsg_copy_no_bound_medium">请先办理量子加密介质后使用加解密能力</string>
+    <string name="base_qmsg_copy_no_bound_medium_soft">当前账号未绑定可用加密介质，前往【我的】-【安全中心】-【加密介质管理】激活量子软模块。</string>
+    <string name="base_qmsg_copy_not_subscribed">使用加解密能力需订购【量子密信业务】</string>
+    <string name="base_qmsg_copy_service_error">服务遇到问题，请稍后重试</string>
+    <string name="base_qmsg_err_02_content1">加解密功能需开通量子SIM卡后方可使用。请前往号码归属地电信营业厅办理更换，可提前拨打10000号查询可办理网点</string>
+    <string name="base_qmsg_err_02_content2">前往[我的】-[安全中心】-[加密介质管理】中激活量子软模块</string>
+    <string name="base_qmsg_err_02_title">需办理量子SIM卡</string>
+    <string name="base_qmsg_err_03_01_content1">将量子SIM卡放在卡槽1</string>
+    <string name="base_qmsg_err_03_01_content2">前往【我的】-【安全中心】-【加密介质管理】中激活量子安全组件。去激活>></string>
+    <string name="base_qmsg_err_03_01_title">未检测到加密介质</string>
+    <string name="base_qmsg_err_03_02_01_active_content1">切换为加密介质绑定的账号登录</string>
+    <string name="base_qmsg_err_03_02_01_active_content2">前往【我的】-【安全中心】-【加密介质管理】中激活量子安全组件。去激活>></string>
+    <string name="base_qmsg_err_03_02_01_active_sub_title">登录账号与加密介质绑定账号不匹配，无法加解密</string>
+    <string name="base_qmsg_err_03_02_01_active_title">账号与加密介质不匹配</string>
+    <string name="base_qmsg_err_03_02_01_main_content1">当前账号与量子SIM卡【%1$s】账号不同，如需使用加解密功能请登录量子SIM卡账号</string>
+    <string name="base_qmsg_err_03_02_01_main_content2">前往【我的】-【安全中心】-【加密介质管理】中激活量子安全组件。去激活>></string>
+    <string name="base_qmsg_err_03_02_01_main_title">账户和加密介质不匹配</string>
+    <string name="base_qmsg_err_03_02_01_unactive_content1">当前账号与量子SIM卡【%1$s】账号不同，如需使用加解密功能请登录量子SIM卡账号</string>
+    <string name="base_qmsg_err_03_02_01_unactive_content2">当前登录账号与加密介质绑定账号不一致，无法进行加解密</string>
+    <string name="base_qmsg_err_03_02_02_active_content1">当前设备不支持 OMA 协议，无法加解密，请更换设备</string>
+    <string name="base_qmsg_err_03_02_02_active_content2">前往【我的】-【安全中心】-【加密介质管理】中激活量子安全组件。去激活>></string>
+    <string name="base_qmsg_err_03_02_02_active_title">设备不支持OMA协议</string>
+    <string name="base_qmsg_err_03_02_02_unactive_content1">当前设备不支持 OMA 协议，无法加解密，请更换设备</string>
+    <string name="base_qmsg_err_03_02_02_unactive_content2">当前设备不支持 OMA 协议，无法加解密，请更换设备</string>
+    <string name="base_qmsg_err_03_02_03_active_content1">量子SIM卡已失效，请前往号码归属地的电信营业厅更换量子SIM卡</string>
+    <string name="base_qmsg_err_03_02_03_active_content2">前往【我的】-【安全中心】-【加密介质管理】中激活量子安全组件。去激活>></string>
+    <string name="base_qmsg_err_03_02_03_active_title">量子SIM卡已损坏</string>
+    <string name="base_qmsg_err_03_02_03_unactive_content1">量子SIM卡已失效，请前往号码归属地的电信营业厅更换量子SIM卡</string>
+    <string name="base_qmsg_err_03_02_03_unactive_content2">量子SIM卡已失效，请前往号码归属地的电信营业厅更换量子SIM卡</string>
+    <string name="base_qmsg_err_03_02_04_active_content1">量子密钥已用尽，请拨打400-811-6666咨询密钥续充详情</string>
+    <string name="base_qmsg_err_03_02_04_active_content2">前往【我的】-【安全中心】-【加密介质管理】中激活量子安全组件。去激活>></string>
+    <string name="base_qmsg_err_03_02_04_active_title">量子密钥已用尽</string>
+    <string name="base_qmsg_err_03_02_04_unactive_content1">量子密钥已用尽，请拨打400-811-6666咨询密钥续充详情</string>
+    <string name="base_qmsg_err_03_02_04_unactive_content2">量子密钥已用尽，请联系客服咨询密钥续充详情</string>
+    <string name="base_qmsg_err_03_02_05_active_content1">尝试重启量子密信APP</string>
+    <string name="base_qmsg_err_03_02_05_active_content2">重新连接量子加密介质，如插拔量子SIM卡</string>
+    <string name="base_qmsg_err_03_02_05_active_content3">前往【我的】-【安全中心】-【加密介质管理】中激活量子安全组件；去激活>></string>
+    <string name="base_qmsg_err_03_02_05_active_content4">仍未解决可致电客服热线：400-811-6666</string>
+    <string name="base_qmsg_err_03_02_05_active_title">加解密能力异常</string>
+    <string name="base_qmsg_err_03_02_05_unactive_content1">服务遇到问题，请稍后重试</string>
+    <string name="base_qmsg_err_03_02_05_unactive_content2">服务遇到问题，请稍后重试</string>
+    <string name="base_qmsg_error_01_content">使用加解密能力需订购【量子密信业务】</string>
+    <string name="base_qmsg_feature_burn_desc">消息阅后自动销毁</string>
+    <string name="base_qmsg_feature_burn_title">阅后即焚</string>
+    <string name="base_qmsg_feature_encrypt_call_desc">通话全程加密保护</string>
+    <string name="base_qmsg_feature_encrypt_call_title">加密通话</string>
+    <string name="base_qmsg_feature_encrypt_msg_desc">会话内容全面加密</string>
+    <string name="base_qmsg_feature_encrypt_msg_title">加密消息</string>
+    <string name="base_qmsg_feature_incoming_call_desc">来电身份快速识别</string>
+    <string name="base_qmsg_feature_incoming_call_title">来电弹屏</string>
+    <string name="base_qmsg_feature_note_desc">敏感信息随时记录</string>
+    <string name="base_qmsg_feature_note_title">量子便签</string>
+    <string name="base_qmsg_feature_safebox_desc">重要文件安心存放</string>
+    <string name="base_qmsg_feature_safebox_title">量子保险柜</string>
+    <string name="base_qmsg_floating_subtitle">开启量子密信业务    守护您的通信安全</string>
+    <string name="base_qmsg_floating_title_burn">开启阅后即焚需订购</string>
+    <string name="base_qmsg_floating_title_dial">拨打加密电话需订购</string>
+    <string name="base_qmsg_floating_title_encrypt_mode">启用加解密能力需订购</string>
+    <string name="base_qmsg_floating_title_generic">激活量子安全组件需订购</string>
+    <string name="base_qmsg_floating_title_highlight">【量子密信业务】</string>
+    <string name="base_qmsg_floating_title_incoming_call">开启来电弹屏需订购</string>
+    <string name="base_qmsg_floating_title_message">加解密消息需订购</string>
+    <string name="base_qmsg_floating_title_note">启用量子便签需订购</string>
+    <string name="base_qmsg_floating_title_safebox">启用量子保险柜需订购</string>
+    <string name="base_qmsg_title_account_mismatch">账号与加密介质不匹配</string>
+    <string name="base_qmsg_title_card_invalid">量子SIM卡已失效</string>
+    <string name="base_qmsg_title_key_exhausted">量子密钥已用尽</string>
+    <string name="base_qmsg_title_medium_missing">未检测到加密介质</string>
+    <string name="base_qmsg_title_not_subscribed">未开通量子密信业务</string>
+    <string name="base_qmsg_title_oma_unsupported">设备不支持 OMA 协议</string>
+    <string name="base_quantum_banner_cta_activate">立即激活</string>
+    <string name="base_quantum_banner_cta_activating">激活中…</string>
+    <string name="base_quantum_banner_desc_1">基于融合QKD与PQC的分布式密码体系，密钥全流程受协同签名算法保护，为您提供合规可信的高安全加密服务</string>
+    <string name="base_quantum_banner_desc_2">新增量子软加密模块，支持多类型终端便捷接入</string>
+    <string name="base_quantum_banner_desc_3">【量子安全组件】一键激活，即刻开启量子级安全守护</string>
+    <string name="base_quantum_banner_title_1">量子安全组件</string>
+    <string name="base_quantum_banner_title_2">加密介质多元化</string>
+    <string name="base_quantum_banner_title_3">便捷安全，一键启用</string>
+    <string name="base_rec_code">识别二维码</string>
+    <string name="base_reget">重新获取</string>
+    <string name="base_resend_after_decrypt">请解密后再重发</string>
+    <string name="base_risk_jump_tips">你正在打开外部网站，请不要相信刷单、高收益理财、网赚、赌博等内容，谨防上当受骗。</string>
+    <string name="base_risk_jump_title">打开外部网站风险提示</string>
+    <string name="base_rum_privacy_notice_content">为持续提升APP稳定性，本次更新新增了应用体验优化相关的数据采集，用来帮我们更快发现并解决卡顿、闪退等问题。收集的数据仅用于保障服务稳定，不会用于其他用途。如果不同意将无法使用此功能，但不影响你使用其他业务功能。详情请查看《隐私政策》。</string>
+    <string name="base_rum_privacy_notice_title">隐私政策更新提醒</string>
+    <string name="base_save">保存</string>
+    <string name="base_save_image">保存至相册</string>
+    <string name="base_save_picture">保存图片</string>
+    <string name="base_sd_card">/SD卡</string>
+    <string name="base_search">搜索</string>
+    <string name="base_secret_desc_0">在加密或解密场景中，将使用对应数量密钥。包括但不限于以下场景：</string>
+    <string name="base_secret_desc_1">1.消息：发送/查看1条加密消息使用1支密钥。</string>
+    <string name="base_secret_desc_2">2.通话：接听/拨打1次加密语音/视频通话使用1支密钥。</string>
+    <string name="base_secret_desc_3">3.保险柜：存入文件、进入保险柜应用和查看保险柜内文件，每次各使用1支密钥。</string>
+    <string name="base_secret_desc_4">4.加密便签：新建、进入和查看便签，每次各使用1支密钥。</string>
+    <string name="base_secret_desc_title">密钥使用场景说明</string>
+    <string name="base_select_call_type">请选择拨打方式</string>
+    <string name="base_selected_file_append">个附件-</string>
+    <string name="base_send">发送</string>
+    <string name="base_send_1">确认(1)</string>
+    <string name="base_send_friend_verify">发送好友验证</string>
+    <string name="base_send_msg_number">发送消息数量</string>
+    <string name="base_separate">解除</string>
+    <string name="base_set">设置</string>
+    <string name="base_set_work_list_info_fail">设置工作台信息失败</string>
+    <string name="base_seven_text">日</string>
+    <string name="base_sim_1_not_match">当前登录的手机号与SIM卡1手机号不一致</string>
+    <string name="base_sim_error_retry">操作失败，请稍后重试</string>
+    <string name="base_sim_phone_no_support">当前机型不支持使用加解密功能</string>
+    <string name="base_six_text">六</string>
+    <string name="base_three_text">三</string>
+    <string name="base_time_enter_encrybox">进入保险柜时</string>
+    <string name="base_time_enter_message">进入消息时</string>
+    <string name="base_tip_config_get_error">获取配置信息失败</string>
+    <string name="base_tip_login_error">检测到您的登录异常，请重新登录</string>
+    <string name="base_tip_saved">保存成功</string>
+    <string name="base_tip_token">token 为空</string>
+    <string name="base_toast_check_phone_fail">请使用卡槽1中的量子卡号码进行登录</string>
+    <string name="base_toast_handling_encrypt_services">请先办理量子加密业务</string>
+    <string name="base_toast_permission_camera">请开启相机相关权限</string>
+    <string name="base_today">今</string>
+    <string name="base_today_text">今</string>
+    <string name="base_trans">转发</string>
+    <string name="base_two_text">二</string>
+    <string name="base_un_set_locked">尚未设置解锁方式，确定退出么？</string>
+    <string name="base_unauthorized">未授权</string>
+    <string name="base_unkonw">未知</string>
+    <string name="base_unlocked">无法解锁?</string>
+    <string name="base_upload_fail">上传%s失败</string>
+    <string name="base_use_genuine_app">请使用官方正版APP</string>
+    <string name="base_user_no_used">用户已停机</string>
+    <string name="base_user_privacy_agreement_update">用户隐私政策更新</string>
+    <string name="base_version_update">新版本升级(%s)</string>
+    <string name="base_video">视频</string>
+    <string name="base_video_expired">视频已过期</string>
+    <string name="base_vir_machine">当前设备为虚拟机，禁止使用APP</string>
+    <string name="base_wait">继续等待</string>
+    <string name="base_weekday_1">周一</string>
+    <string name="base_weekday_2">周二</string>
+    <string name="base_weekday_3">周三</string>
+    <string name="base_weekday_4">周四</string>
+    <string name="base_weekday_5">周五</string>
+    <string name="base_weekday_6">周六</string>
+    <string name="base_weekday_7">周日</string>
+    <string name="base_year">年</string>
+    <string name="base_yes">是</string>
+    <string name="base_yestoday">昨天</string>
+    <string name="base_znwc_privacy_agreement">智能文创隐私协议</string>
+    <string name="base_znwc_service_agreement">智能文创服务协议</string>
+    <string name="biometrics_check_text_two">切换解锁方式</string>
+    <string name="biometrics_face_pwd_text">人脸验证</string>
+    <string name="biometrics_fp_pwd_text">指纹验证</string>
+    <string name="biometrics_gesture_pwd_text">手势验证</string>
+    <string name="biometrics_login_pwd_check_tips">登录密码不能为空</string>
+    <string name="biometrics_logout_tips_text">重新登录后，历史设置的解锁信息将被清除。为保护信息安全，请及时在“我的”-“安全中心”-“应用安全”模块重新进行解锁设置。</string>
+    <string name="biometrics_number_pwd_set">密码设置</string>
+    <string name="biometrics_number_pwd_text">密码验证</string>
+    <string name="biometrics_pwd_check">密码验证</string>
+    <string name="biometrics_re_login_text">重新登录</string>
+    <string name="burn_down_msg">消息已焚毁</string>
+    <string name="call_ing">音视频通话中，无法使用此功能</string>
+    <string name="calling_customer_service">拨打</string>
+    <string name="calling_customer_service_text">拨打客服热线</string>
+    <string name="can_not_get_clip">无法获取剪贴板内容</string>
+    <string name="can_not_get_clip_des">可以前往「我的-个人设置」中开启允许读取剪贴板权限，帮助你自动识别并粘贴已复制的内容</string>
+    <string name="cancel">取消</string>
+    <string name="cancel_send">取消发送</string>
+    <string name="canlendar">日历</string>
+    <string name="ch_auto_login_pc">桌面端登录确认</string>
+    <string name="ch_chat_register_tips">请拨打400-811-6666开通量子密信业务</string>
+    <string name="ch_customer_service">AI助手</string>
+    <string name="ch_download_decode">接收文件并解密</string>
+    <string name="ch_download_file">接收文件</string>
+    <string name="ch_download_file_pause">继续接收文件</string>
+    <string name="ch_download_file_retry">重新接收</string>
+    <string name="ch_download_file_tip_recv">正在接收文件</string>
+    <string name="ch_download_file_tip_retry">接收失败，请点击重试</string>
+    <string name="ch_edit">编辑</string>
+    <string name="ch_file_expired">文件已过期</string>
+    <string name="ch_group_hint_ordinary">不限制群成员身份，可用于跨单位沟通协作</string>
+    <string name="ch_huiyi">会议</string>
+    <string name="ch_isChatEncrypt">量子安全保护中</string>
+    <string name="ch_isChatEncrypt_isChatBurnAfterReading">量子安全保护中 | 阅后即焚</string>
+    <string name="ch_isChatEncrypt_isChatBurnAfterReading_qkd">%s量子城域网保护中 | 阅后即焚</string>
+    <string name="ch_isChatEncrypt_isChatProhibitForward">量子安全保护中 | 禁止转发</string>
+    <string name="ch_isChatEncrypt_isChatProhibitForward_qkd">%s量子城域网保护中 | 禁止转发</string>
+    <string name="ch_isChatEncrypt_qkd">%s量子城域网保护中</string>
+    <string name="ch_isChatProhibitForward">已开启禁止转发</string>
+    <string name="ch_login_device_mac">Mac量子密信已登录</string>
+    <string name="ch_login_device_other">电脑端量子密信已登录</string>
+    <string name="ch_login_device_qilin">麒麟量子密信已登录</string>
+    <string name="ch_login_device_tongxin">统信量子密信已登录</string>
+    <string name="ch_login_device_win">Windows量子密信已登录</string>
+    <string name="ch_mac_login">mac 已登录</string>
+    <string name="ch_msg_read_status">消息阅读状态</string>
+    <string name="ch_msg_send_fast">消息发送过快！</string>
+    <string name="ch_msg_you_received_one_message">您收到一条消息</string>
+    <string name="ch_other_pc_login">电脑端已登录</string>
+    <string name="ch_pad_login">pad 已登录</string>
+    <string name="ch_permission_file_permission">请选择分享相关权限</string>
+    <string name="ch_qilin_login">麒麟 已登录</string>
+    <string name="ch_richeng">日历</string>
+    <string name="ch_scan_login_manage_system">量子密信管理系统登录确认</string>
+    <string name="ch_scan_login_open_claw">量子密信龙虾助手登录确认</string>
+    <string name="ch_scan_login_pc">量子密信桌面版登录确认</string>
+    <string name="ch_search">搜索</string>
+    <string name="ch_select_contacts">选择联系人</string>
+    <string name="ch_time_format_accuracy">yyyy-MM-dd HH:mm:ss </string>
+    <string name="ch_tongxin_login">统信 已登录</string>
+    <string name="ch_unknow_error">未知异常</string>
+    <string name="ch_win_login">win 已登录</string>
+    <string name="chat_message_need_select_person">请选择联系人</string>
+    <string name="chat_message_share_fail">分享的聊天记录上传失败，\n请检查网络后重试</string>
+    <string name="chat_message_share_on_update">分享的聊天记录正在上传中</string>
+    <string name="choose_permission">选择开通权限</string>
+    <string name="ck_version_and_size">版本：%1$s   大小：%2$s</string>
+    <string name="clear_data_error">清空数据异常</string>
+    <string name="close">关闭</string>
+    <string name="co_conv_group_type">请选择群类型</string>
+    <string name="collection_save_encryption_tips">选中的图片/视频包含加密消息，加密消息不支持转发、收藏、转存保险柜及转存操作</string>
+    <string name="collection_save_encryption_tips_2">选中的图片/视频包含未下载人消息,未下载消息等不可转发</string>
+    <string name="confirm">确认</string>
+    <string name="confirm_unbind">确认解绑</string>
+    <string name="convert_to_online_document">转为在线文档</string>
+    <string name="customer_service_text">"%1$s,请联系4008116666"</string>
+    <string name="data_error">网络不给力，请稍后再试</string>
+    <string name="dial_phone_call_text">拨打手机电话</string>
+    <string name="dialog_titile_burn_reading">在线文档暂不支持阅后即焚功能，是否关闭阅后即焚并发送文档？</string>
+    <string name="encrypt_mode">量子加密</string>
+    <string name="file_desc" translatable="false">%1$s    \n%2$s创建</string>
+    <string name="file_desc2" translatable="false">来自 %1$s %2$s</string>
+    <string name="file_error">文件有误</string>
+    <string name="file_no_exists_text">文件不存在或者已删除</string>
+    <string name="file_not_selected">尚未选择文件</string>
+    <string name="file_permission_tip">请开启文件相关权限</string>
+    <string name="file_size">文件大小：%s</string>
+    <string name="file_size0_tip">文件大小不能为0！</string>
+    <string name="file_size_tip">文件大小超过%dMB！</string>
+    <string name="finger_add_must">请添加至少一个有效指纹</string>
+    <string name="finger_cancel">取消</string>
+    <string name="finger_change">检测到您的指纹信息已变更，请使用其他方式登录重新开通指纹登录方式</string>
+    <string name="finger_check_fail">指纹验证失败</string>
+    <string name="finger_draw">至少连接%d个点，请重新绘制</string>
+    <string name="finger_draw_again">请再次绘制解锁图案</string>
+    <string name="finger_draw_not_same">与上次绘制不一致，请重新绘制</string>
+    <string name="finger_draw_setting_suc">手势解锁图案设置成功! </string>
+    <string name="finger_init_error">初始化指纹异常</string>
+    <string name="finger_input_error_tip">错误次数已超过%d次，1分钟后重试</string>
+    <string name="finger_input_times">手势错误，还可输入%d次</string>
+    <string name="finger_lock_screen">请先到手机系统设置中开通指纹登录</string>
+    <string name="finger_no_match">指纹验证不匹配</string>
+    <string name="finger_not_support">当前设备不支持指纹识别</string>
+    <string name="finger_other_verify">其他验证</string>
+    <string name="finger_password_input_times">密码错误，还可输入%d次</string>
+    <string name="finger_press">请按压指纹感应区验证指纹</string>
+    <string name="finger_pwd_count_tip">密码不足6位</string>
+    <string name="finger_pwd_no_empty">密码不能为空</string>
+    <string name="finger_pwd_times">密码错误，还剩%d次机会</string>
+    <string name="finger_ui_error">界面初始化失败，请退出重新进入</string>
+    <string name="finger_unlock_suc">解锁成功！</string>
+    <string name="finger_verify_cancel">指纹验证取消</string>
+    <string name="folder_desc" translatable="false">文件:%1$s  |  文件夹:%2$s</string>
+    <string name="forward">转发</string>
+    <string name="fp_error_five">指纹初始化异常</string>
+    <string name="fp_error_four">手机指纹识别不可用</string>
+    <string name="fp_error_sex">指纹验证被锁或者过于频繁</string>
+    <string name="fp_error_three">手机设备尚未开启指纹，请先开启手机指纹</string>
+    <string name="fp_error_two">手机设备硬件不支持指纹识别</string>
+    <string name="gesture_check_text_one">请使用手势验证</string>
+    <string name="gesture_setting_error_one">与上次绘制的图形不一致，请重新绘制</string>
+    <string name="gesture_setting_error_two">至少连接4个点，请重新绘制</string>
+    <string name="gesture_setting_text_one">设置手势密码,方便您的登录</string>
+    <string name="gesture_setting_text_two">请绘制您的手势密码</string>
+    <string name="gesture_setting_tips_three">手势绘制成功</string>
+    <string name="gesture_setting_tips_two">请再次绘制您的手势密码</string>
+    <string name="go_setting">去设置</string>
+    <string name="group_choose">已选择</string>
+    <string name="group_confirm_num">确定(%d/200)</string>
+    <string name="group_link">群接龙</string>
+    <string name="group_max_choose">最多选择%d人</string>
+    <string name="hangup">挂断</string>
+    <string name="hide_phone">用户号码已被隐藏，无法拨出电话</string>
+    <string name="hook_error">APP运行环境存在安全隐患</string>
+    <string name="identify_pic_qr">识别图中的二维码</string>
+    <string name="image_no_selected">尚未选择图片</string>
+    <string name="import_fail">转存失败</string>
+    <string name="importing">转为在线文档中...</string>
+    <string name="input_pwd">请输入密码</string>
+    <string name="input_pwd_again">请再次输入密码</string>
+    <string name="input_pwd_no_same">两次密码输入不一致，请确认！</string>
+    <string name="invite_details_left">%1$s邀请你加入群聊%2$s进入可查看详情</string>
+    <string name="invite_details_right">你邀请%1$s加入群聊%2$s进入可查看详情</string>
+    <string name="invite_group">邀请你加入群聊</string>
+    <string name="invite_reason_hint">邀请理由</string>
+    <string name="lib_constant_us">——————— 客服热线：4008116666 ———————</string>
+    <string name="location_permission_tip">请开启定位相关权限</string>
+    <string name="logout_fail">退出登录失败</string>
+    <string name="ma_anti_evil_hint">量子密信提醒你谨防诈骗、不要轻信涉钱信息，不要进行任何线下转账行为</string>
+    <string name="ma_code_login">验证码登录</string>
+    <string name="ma_exit_suc">退出成功</string>
+    <string name="ma_join_group_invalidate">群链接已过期</string>
+    <string name="ma_like_phone_number">%s可能是一个电话号码，你可以</string>
+    <string name="ma_login_account">账号</string>
+    <string name="ma_login_code">验证码</string>
+    <string name="ma_login_error">检测到您的登录异常，请重新登录2</string>
+    <string name="ma_login_input_code">请输入验证码</string>
+    <string name="ma_login_input_password">请输入登录密码</string>
+    <string name="ma_login_input_phone">请输入手机号码</string>
+    <string name="ma_login_login">登录</string>
+    <string name="ma_login_login_fail">@string/base_sim_error_retry</string>
+    <string name="ma_login_login_success">登录成功</string>
+    <string name="ma_login_one_key">一键登录</string>
+    <string name="ma_login_password_login">账号密码登录</string>
+    <string name="ma_login_phone_error">请输入正确的手机号</string>
+    <string name="ma_login_resend">%ss后可重新发送</string>
+    <string name="ma_login_send_code">发送验证码</string>
+    <string name="ma_login_send_code_error">验证码发送异常</string>
+    <string name="ma_login_send_code_fail">验证码发送失败</string>
+    <string name="ma_login_send_code_success">验证码发送成功</string>
+    <string name="ma_login_welcome">欢迎登录</string>
+    <string name="ma_login_without_code_error">天翼免密登录失败</string>
+    <string name="ma_open_floating_window_permissions">请开启悬浮窗权限\n避免遗漏语音电话、视频电话等重要消息</string>
+    <string name="ma_open_floating_window_permissions_audio_call">语音电话</string>
+    <string name="ma_open_floating_window_permissions_btn">去开启</string>
+    <string name="ma_open_floating_window_permissions_video_call">视频电话</string>
+    <string name="ma_person_belongings_security">请在聊天中注意人身财产安全</string>
+    <string name="ma_save_to_phone_contacts">保存到手机通讯录</string>
+    <string name="ma_select_phone_number">已选中电话号码：%s</string>
+    <string name="ma_select_phone_number_cloud">%s可能是一个电话号码或会议号，你可以</string>
+    <string name="max_file_size">文件大小超过%dMB！</string>
+    <string name="meeting_manager">会议管理</string>
+    <string name="merge_forward">合并转发</string>
+    <string name="mi_call_ring">来电铃声</string>
+    <string name="mi_call_ring_ai">AI智铃</string>
+    <string name="mi_call_ring_default">APP默认</string>
+    <string name="mi_call_ring_not_support">当前机型暂不支持该功能</string>
+    <string name="mi_call_ring_restore_failed">恢复默认失败</string>
+    <string name="mi_call_ring_set_failed">设置铃声失败</string>
+    <string name="mi_call_show_notify">来电弹屏</string>
+    <string name="mi_call_show_notify_tip">请“查看帮助”来了解如何开启此功能</string>
+    <string name="mi_call_show_notify_tip_key">“查看帮助”</string>
+    <string name="mi_clean_file_cache_hint">缓存是使用量子密信过程中产生的临时数据，清理缓存不会影响量子密信的正常使用。</string>
+    <string name="mi_collect_clipboard_hint">剪切板信息</string>
+    <string name="mi_collect_sdcard_hint">本地存储信息</string>
+    <string name="mi_crypt_device_type">设备类型:</string>
+    <string name="mi_crypt_media_location">量子密钥归属地：</string>
+    <string name="mi_crypt_miyu_buds">量子密语耳机</string>
+    <string name="mi_crypt_remain">密钥余量:</string>
+    <string name="mi_crypt_sim_card">量子SIM卡</string>
+    <string name="mi_crypt_soft">量子安全组件</string>
+    <string name="mi_crypt_usb_key">安全Ukey</string>
+    <string name="mi_install_next">下次安装</string>
+    <string name="mi_install_now">安装</string>
+    <string name="mi_miyu_buds">密语耳机</string>
+    <string name="mi_reset_call_ring">恢复默认</string>
+    <string name="mi_set_call_ring">设置铃声</string>
+    <string name="mi_setting_clip_content">开启后可自动识别已复制到剪切板的内容</string>
+    <string name="mi_setting_clip_title">允许读取剪切板</string>
+    <string name="mi_setting_foreground_hint">前台通知</string>
+    <string name="mi_setting_foreground_hint_1">开启前台通知将实现应用保活</string>
+    <string name="mi_setting_permission_set_hint">未开启必要权限将影响量子密信的用户体验</string>
+    <string name="mi_share">分享</string>
+    <string name="mi_share_chat_record">分享聊天记录</string>
+    <string name="mi_share_on_qq">分享到QQ</string>
+    <string name="mi_share_on_wechat">分享到微信</string>
+    <string name="mi_share_within_the_app">分享到应用内</string>
+    <string name="mi_sim_card">SIM卡</string>
+    <string name="mi_update_now">下载并更新</string>
+    <string name="need_lock_5">离开5分钟之后再进入，需要进行解锁</string>
+    <string name="net_error">请求失败</string>
+    <string name="net_unconnected">网络不可用，请检查网络连接！</string>
+    <string name="net_unconnected_tip">网络连接失败，请检查你的网络后重试！</string>
+    <string name="no_verify_app">启动应用时无需验证</string>
+    <string name="normal_mode">普通模式</string>
+    <string name="not_support_info">将本地文件导入为可多人协同的在线文档，当前仅支持导入以下格式文件（单个文件 %1$d MB以内）：%2$s</string>
+    <string name="not_support_preview_tips">该文件不支持预览，请用第三方应用打开</string>
+    <string name="not_support_transform_into_online_doc">当前文档暂不支持转成在线文档</string>
+    <string name="online_document">在线文档</string>
+    <string name="open_with_other_app">其他应用打开</string>
+    <string name="please_input">请输入</string>
+    <string name="please_select_burning_time_after_reading">请选择阅后即焚时长</string>
+    <string name="please_select_burning_time_after_reading_hint">阅后即焚的信息自动开启量子加密</string>
+    <string name="pop_file_title">文件不支持</string>
+    <string name="pravicy_policy">基本功能隐私政策</string>
+    <string name="pricacy_user_agreeement">感谢您使用量子密信！在您使用服务之前，请仔细阅读《量子密信服务协议》和《基本功能隐私政策》，以便您能更好的行使个人权利和保护个人隐私信息。根据《常见类型移动互联网应用程序必要个人信息范围规定》，量子密信APP属于"即时通讯类"APP，基本业务能力为"账号服务、即时通讯、通讯录、拨打音视频电话"，不存在通过短信、电话形式进行营销、推销的情形。必要个人信息：1、注册用户移动电话号码、SIM卡状态信息。2、账号信息：账号、即时通信联系人账号列表。3、聊天信息（文本、语音、图片、文件消息）、操作日志信息。您同意个人信息处理规则，仅代表您已了解本应用提供的功能，以及功能运行所需的必要个人信息和权限，并不代表您已同意我们收集非必要个人信息，我们会在您使用到相应业务功能时，另行弹窗再次征得您同意后开启。您不同意开启权限，并不会影响您使用基本业务功能。我已阅读并同意基本业务功能隐私政策。</string>
+    <string name="privacy_policy_update">感谢您信任并使用量子密信！\n我们更新了最新版的《隐私政策》，您可以阅读协议了解详细信息。如您同意，请点击“同意”开始使用我们的服务；如您无法同意，可点击“暂不使用”，很遗憾，我们将无法为您提供服务。</string>
+    <string name="ps_send_front_num">%1$d/%2$d 确认</string>
+    <string name="pwd_verify_fail">登录密码验证失败</string>
+    <string name="refuse">拒绝</string>
+    <string name="remove">移除</string>
+    <string name="revoke_msg">消息已撤回</string>
+    <string name="save_fail_text">保存失败</string>
+    <string name="save_file_position_text">文件已保存至%1$s</string>
+    <string name="save_file_text">保存文件</string>
+    <string name="save_image_position_text">图片已保存至%1$s文件夹</string>
+    <string name="save_video_position_text">视频已保存至%1$s</string>
+    <string name="security_setting">应用安全设置</string>
+    <string name="select_file_max_size">图片不能超过%sMB</string>
+    <string name="selected_file_count" translatable="false">发送(%1$d/%2$d)</string>
+    <string name="selected_permission">请先选中权限</string>
+    <string name="set_application_pwd">检测到您尚未设置保险柜及便签密码，为了您的账户安全，请进行密码设置</string>
+    <string name="single_forward">逐条转发</string>
+    <string name="sure">确定</string>
+    <string name="sure_delete">确认删除</string>
+    <string name="sure_req_permission">确定开通权限</string>
+    <string name="sure_send">继续发送</string>
+    <string name="text_transmit">转发给：</string>
+    <string name="three_party_app_open">用其他应用打开</string>
+    <string name="tip_copy">复制</string>
+    <string name="tip_copyed">已复制</string>
+    <string name="tips_robot">"请前往[中国电信员工版APP]查看此功能"</string>
+    <string name="transfer_online_doc_send">转为在线文档发送</string>
+    <string name="transfer_online_doc_tips">使用在线文档，协同办公更快捷</string>
+    <string name="unsupport_transfer_online_doc_send">不可转为在线文档</string>
+    <string name="update_load_finish">上传完成</string>
+    <string name="user_cancel">用户取消</string>
+    <string name="user_policy">量子密信服务协议</string>
+    <string name="verify_error">校验失败</string>
+    <string name="verify_finger">验证指纹</string>
+    <string name="verify_phone">对方尚未开通业务</string>
+    <string name="voip_code_valid_try_later">获取联系人信息失败，请稍后再试</string>
+    <string name="voip_encrypt_call_text">加密语音通话</string>
+    <string name="voip_normal_call">普通通话</string>
+    <string name="voip_normal_call_text">普通语音通话</string>
+    <string name="voip_not_qm_switch_normal">对方尚未开通量子密信业务\n是否转为普通通话？</string>
+    <string name="voip_toast_not_call_own">不能呼叫自己</string>
+    <string name="voip_verify_phone">对方尚未开通业务</string>
+    <string name="wo_encrypt_box_biometrics_pwd">应用安全</string>
+    <string name="wo_encrypt_box_face_unlocking">人脸解锁</string>
+    <string name="wo_encrypt_box_fp_unlocking">指纹解锁</string>
+    <string name="wo_encrypt_box_fp_unlocking_tips">指纹解锁仅对本机有效</string>
+    <string name="wo_encrypt_box_gesture_setting">手势设置</string>
+    <string name="wo_encrypt_box_gesture_unlocking">手势解锁</string>
+    <string name="wo_encrypt_box_open">应用内打开</string>
+    <string name="wo_encrypt_box_open_out">外部应用打开</string>
+    <string name="wo_encrypt_box_pwd_setting">密码设置</string>
+    <string name="wo_encrypt_box_pwd_unlocking">密码解锁</string>
+    <string name="wo_item_no_authorized">未授权，请联系管理员后台开通</string>
+    <string name="wo_toast_permission_file_camera">请开启文件、相机相关权限</string>
+    <string name="z">2022</string>
+    <style name="BottomSheetDialog" parent="Theme.Design.Light.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/bottomSheetStyleWrapper</item>
+        <item name="android:background">@null</item>
+        
+        <item name="android:windowSoftInputMode">adjustNothing</item>
+    </style>
+    <style name="CTASDKWhiteWebview" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@color/color53</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">false</item>
+    </style>
+    <style name="CircleStyle_Image">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+    <style name="DialogAnimation">
+        <item name="android:windowEnterAnimation">@anim/bottomsheet_bottom_in</item>
+        <item name="android:windowExitAnimation">@anim/bottomsheet_bottom_out</item>
+    </style>
+    <style name="FullscreenTheme" parent="Theme.QmChat">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+    <style name="FullscreenTranslucentTheme" parent="FullscreenTheme">
+        <item name="android:windowBackground">@color/image_view_bg_color</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
+    <style name="MatchWidthDialog" parent="@style/Theme.AppCompat.Dialog">
+        <item name="android:windowCloseOnTouchOutside">true</item>
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+    <style name="RoundedSoftModuleStyle_Image">
+        <item name="cornerFamily">rounded</item>
+        
+        <item name="cornerSizeTopLeft">13dp</item>
+        
+        <item name="cornerSizeTopRight">13dp</item>
+        
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+    <style name="RoundedStyle_Image">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/size_7</item>
+    </style>
+    <style name="RoundedStyle_Share">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">14dp</item>
+    </style>
+    <style name="RoundedStyle_round_12">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+    <style name="RoundedStyle_round_3">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">3dp</item>
+    </style>
+    <style name="Theme.QmChat" parent="Theme.MaterialComponents.Light.NoActionBar">
+        
+        
+        
+        
+
+        <item name="colorPrimary">@color/transparent</item>
+        <item name="colorPrimaryDark">@color/transparent</item>
+        <item name="colorAccent">@color/teal_200</item>
+
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        
+        <item name="android:textAllCaps">false</item>
+
+        <item name="uikit_dividerViewStyle">@style/UiKit.DividerViewStyle</item>
+        <item name="uikit_dividerColor">@color/uikit_dividerColor</item>
+    </style>
+    <style name="UiKit"/>
+    <style name="UiKit.DividerViewStyle">
+        <item name="uikit_dividerThickness">1dp</item>
+        <item name="uikit_dividerColor">?attr/uikit_dividerColor</item>
+        <item name="uikit_dividerLineType">solid_path</item>
+        <item name="uikit_dividerOrientation">horizontal</item>
+    </style>
+    <style name="base_customTransparent" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+    </style>
+    <style name="base_dialog">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.4</item>
+    </style>
+    <style name="base_dialog_custom">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.4</item>
+    </style>
+    <style name="bg_divide">
+        <item name="android:background">@color/color86</item>
+    </style>
+    <style name="bg_lines">
+        <item name="android:background">@color/th_blue_cccccc</item>
+    </style>
+    <style name="bottomSheetStyleWrapper" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">#00000000</item>
+    </style>
+    <style name="card_bg">
+        <item name="android:background">@drawable/bg_white_round_7</item>
+        <item name="android:layout_marginStart">13dp</item>
+        <item name="android:layout_marginEnd">13dp</item>
+    </style>
+    <style name="dialog_Upload" parent="@android:style/Theme.DeviceDefault.Light.Dialog.NoActionBar.MinWidth">
+        <item name="android:background">@color/color53</item>
+    </style>
+    <style name="ma_Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@drawable/bg_splash</item>
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+        
+
+    </style>
+    <style name="ma_auth" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+    </style>
+    <style name="mini_activity">
+
+        
+
+        <item name="android:windowNoTitle">true</item>
+
+        
+
+        <item name="android:windowBackground">@android:color/transparent</item>
+
+        
+
+        <item name="android:windowFrame">@null</item>
+
+        
+
+        <item name="windowNoTitle">true</item>
+
+        
+
+        <item name="android:windowIsTranslucent">true</item>
+
+        
+
+        <item name="android:windowContentOverlay">@null</item>
+
+        <item name="android:backgroundDimEnabled">true</item>
+
+        <item name="android:windowCloseOnTouchOutside">false</item>
+
+    </style>
+    <style name="translucent_bg" parent="Theme.AppCompat.NoActionBar" ns1:ignore="ResourceName">
+        <item name="android:windowBackground">@color/transparent</item>
+        　　
+        　　<item name="android:windowIsTranslucent">true</item>
+
+        　　<item name="android:windowAnimationStyle">@android:style/Animation.Translucent</item>
+    </style>
+    <declare-styleable name="ArcProView">
+        <attr name="progress_max"/>
+        <attr name="progress_value"/>
+
+        <attr name="progress_size"/>
+        <attr name="progress_color"/>
+        <attr name="progress_color_background"/>
+
+        <attr name="text_size"/>
+        <attr name="text_color"/>
+        <attr name="text_show"/>
+        <attr name="text_decimal_num"/>
+
+        <attr name="light_color"/>
+        <attr name="light_show"/>
+
+        <attr name="arc_start_angle"/>
+        <attr name="arc_draw_angle"/>
+    </declare-styleable>
+    <declare-styleable name="BaseProgressView">
+        <attr name="progress_max"/>
+        <attr name="progress_value"/>
+
+        <attr name="progress_size"/>
+        <attr name="progress_color"/>
+        <attr name="progress_color_background"/>
+
+        <attr name="text_size"/>
+        <attr name="text_color"/>
+        <attr name="text_show"/>
+        <attr name="text_decimal_num"/>
+
+        <attr name="light_color"/>
+        <attr name="light_show"/>
+
+        <attr name="stroke_color"/>
+        <attr name="stroke_width"/>
+        <attr name="stroke_show"/>
+    </declare-styleable>
+    <declare-styleable name="CalendarView">
+        
+        <attr format="integer" name="initYear"/>
+        
+        <attr format="integer" name="initMonth"/>
+        
+        <attr format="integer" name="initDay"/>
+        
+        <attr format="boolean" name="isInterval"/>
+        
+        <attr format="boolean" name="showToday"/>
+        
+        <attr format="string|reference" name="todayText"/>
+        
+        <attr format="dimension|reference" name="weekTextSize"/>
+        
+        <attr format="dimension|reference" name="monthDayTextSize"/>
+        
+        <attr format="dimension|reference" name="circleRadius"/>
+        
+        <attr format="color|reference" name="weekTextColor"/>
+        
+        <attr format="color|reference" name="lastMonthDayTextColor"/>
+        
+        <attr format="color|reference" name="nowMonthDayTextColor"/>
+        
+        <attr format="color|reference" name="nextMonthDayTextColor"/>
+        
+        <attr format="color|reference" name="nowDayCircleColor"/>
+        
+        <attr format="color|reference" name="checkDayCircleColor"/>
+        
+        <attr format="color|reference" name="checkDayTextColor"/>
+        
+        <attr format="color|reference" name="checkDayIntervalColor"/>
+        
+        <attr format="color|reference" name="disableTextColor"/>
+        
+        <attr format="enum" name="intervalShape">
+            <!--圈圈-->
+            <enum name="circle" value="1"/>
+            <!--矩形-->
+            <enum name="rect" value="2"/>
+        </attr>
+        
+        <attr format="enum" name="monthMode">
+            <!--水平-->
+            <enum name="horizontal" value="1"/>
+            <!--垂直-->
+            <enum name="vertical" value="2"/>
+        </attr>
+    </declare-styleable>
+    <declare-styleable name="CircleProcessView">
+        <attr format="color" name="process_outer_color"/>
+        <attr format="color" name="process_circle_color"/>
+        <attr format="color" name="process_color"/>
+        <attr format="dimension" name="process_stoke"/>
+        <attr format="color" name="process_text_color"/>
+        <attr format="dimension" name="process_text_size"/>
+        <attr format="boolean" name="process_style_text"/>
+        <attr format="dimension" name="process_radius"/>
+        <attr format="color" name="process_ring_color"/>
+        <attr format="color" name="process_ring_bg_color"/>
+        <attr format="dimension" name="process_ring_radius"/>
+    </declare-styleable>
+    <declare-styleable name="CircularProgressView">
+        <attr format="dimension" name="backWidth"/>    
+        <attr format="dimension" name="progWidth"/>    
+        <attr format="color" name="backColor"/>        
+        <attr format="color" name="progColor"/>        
+        <attr format="color" name="progStartColor"/>   
+        <attr format="color" name="progFirstColor"/>   
+        <attr format="integer" name="progressPercent"/>       
+        <attr format="dimension" name="radius"/>       
+    </declare-styleable>
+    <declare-styleable name="ContactSelectView">
+        
+        <attr format="enum" name="viewStyle">
+            <enum name="STYLE_DEFAULT" value="0"/>
+            <enum name="STYLE_WITH_SHARE" value="1"/>
+        </attr>
+        
+        <attr format="boolean" name="showShareButton"/>
+        
+        <attr format="boolean" name="showMaxNum"/>
+        
+        <attr format="integer" name="maxSelectSize"/>
+        
+        <attr format="string" name="buttonText"/>
+        
+        <attr format="string" name="confirmButtonText"/>
+        
+        <attr format="string" name="shareButtonText"/>
+        
+        <attr format="boolean" name="showShareLoading"/>
+    </declare-styleable>
+    <declare-styleable name="CustomProgressBar" ns1:ignore="ResourceName">
+        
+        <attr format="dimension" name="progressHeight"/>
+        
+        <attr format="dimension" name="cpb_cornerRadius"/>
+        
+        <attr format="color" name="progressColor"/>
+        
+        <attr format="color" name="backgroundColor"/>
+        
+        <attr format="integer" name="maxProgress"/>
+        
+        <attr format="integer" name="progress"/>
+    </declare-styleable>
+    <declare-styleable name="CustomTitleBar">
+        <attr format="string" name="tbTitle"/>
+        <attr format="color" name="tbTitleColor"/>
+        <attr format="color" name="barBgColor"/>
+        <attr format="dimension" name="tbTitleSize"/>
+        <attr format="reference" name="tbLeftIcon"/>
+        <attr format="reference" name="tbRightIcon"/>
+        <attr format="reference" name="tbRightTwoIcon"/>
+        <attr format="string" name="tbLeft"/>
+        <attr format="string" name="tbRight"/>
+        <attr format="color" name="tbRightColor"/>
+    </declare-styleable>
+    <declare-styleable name="ExpandableTextView">
+        <attr format="integer" name="maxCollapsedLines"/>
+        <attr format="integer" name="animDuration"/>
+        <attr format="float" name="animAlphaStart"/>
+        <attr format="reference" name="expandIndicator"/>
+        <attr format="reference" name="collapseIndicator"/>
+        <attr format="enum" name="expandToggleType">
+            <enum name="ImageButton" value="0"/>
+            <enum name="TextView" value="1"/>
+        </attr>
+        <attr format="reference" name="expandableTextId"/>
+        <attr format="reference" name="expandCollapseToggleId"/>
+        <attr format="reference" name="expandCollapseToggleTextId"/>
+        <attr format="reference" name="expandCollapseToggleLinearId"/>
+        <attr format="boolean" name="expandToggleOnTextClick"/>
+    </declare-styleable>
+    <declare-styleable name="HeadView">
+        
+        <attr format="dimension" name="hv_text_size"/>
+        <attr format="color|reference" name="hv_text_color"/>
+        <attr format="color|reference" name="hv_text_bg"/>
+        
+        <attr format="boolean" name="hv_circle_head"/>
+
+
+    </declare-styleable>
+    <declare-styleable name="LineBaseProView">
+        <attr name="progress_max"/>
+        <attr name="progress_value"/>
+
+        <attr name="progress_size"/>
+        <attr name="progress_color"/>
+        <attr name="progress_color_background"/>
+
+        <attr name="text_size"/>
+        <attr name="text_color"/>
+        <attr name="text_show"/>
+        <attr name="text_decimal_num"/>
+
+        <attr name="light_color"/>
+        <attr name="light_show"/>
+
+        <attr name="stroke_color"/>
+        <attr name="stroke_width"/>
+        <attr name="stroke_show"/>
+
+        <attr name="line_radius"/>
+        <attr name="left_top_radius"/>
+        <attr name="left_bottom_radius"/>
+        <attr name="right_top_radius"/>
+        <attr name="right_bottom_radius"/>
+        <attr name="progress_radius"/>
+    </declare-styleable>
+    <declare-styleable name="LineBottomProView">
+        <attr name="progress_max"/>
+        <attr name="progress_value"/>
+
+        <attr name="progress_size"/>
+        <attr name="progress_color"/>
+        <attr name="progress_color_background"/>
+
+        <attr name="text_size"/>
+        <attr name="text_color"/>
+        <attr name="text_show"/>
+        <attr name="text_decimal_num"/>
+
+        <attr name="light_color"/>
+        <attr name="light_show"/>
+
+        
+        <attr name="line_radius"/>
+
+        <attr name="box_width"/> //方框--宽度
+        <attr name="box_height"/> //方框--高度
+        <attr name="box_radius"/> //方框--圆角
+    </declare-styleable>
+    <declare-styleable name="LineCentreProView">
+        <attr name="progress_max"/>
+        <attr name="progress_value"/>
+
+        <attr name="progress_size"/>
+        <attr name="progress_color"/>
+        <attr name="progress_color_background"/>
+
+        <attr name="text_size"/>
+        <attr name="text_color"/>
+        <attr name="text_show"/>
+        <attr name="text_decimal_num"/>
+
+        <attr name="light_color"/>
+        <attr name="light_show"/>
+
+        
+        <attr name="line_radius"/>
+
+        <attr name="box_width"/> //方框--宽度
+        <attr name="box_radius"/> //方框--圆角
+    </declare-styleable>
+    <declare-styleable name="LineProView">
+        <attr name="progress_max"/>
+        <attr name="progress_value"/>
+
+        <attr name="progress_size"/>
+        <attr name="progress_color"/>
+        <attr name="progress_color_background"/>
+
+        <attr name="text_size"/>
+        <attr name="text_color"/>
+        <attr name="text_show"/>
+        <attr name="text_decimal_num"/>
+
+        <attr name="light_color"/>
+        <attr name="light_show"/>
+
+        <attr name="stroke_color"/>
+        <attr name="stroke_width"/>
+        <attr name="stroke_show"/>
+
+        
+        <attr name="line_radius"/>
+        <attr name="left_top_radius"/>
+        <attr name="left_bottom_radius"/>
+        <attr name="right_top_radius"/>
+        <attr name="right_bottom_radius"/>
+        <attr name="progress_radius"/>
+    </declare-styleable>
+    <declare-styleable name="PatternIndicatorView">
+        
+        <attr format="color|reference" name="piv_color"/>
+        
+        <attr format="color|reference" name="piv_hitColor"/>
+        
+        <attr format="color|reference" name="piv_errorColor"/>
+        
+        <attr format="color|reference" name="piv_fillColor"/>
+        
+        <attr format="dimension|reference" name="piv_lineWidth"/>
+    </declare-styleable>
+    <declare-styleable name="PatternLockerView">
+        
+        <attr format="color|reference" name="plv_color"/>
+        
+        <attr format="color|reference" name="plv_hitColor"/>
+        
+        <attr format="color|reference" name="plv_errorColor"/>
+        
+        <attr format="color|reference" name="plv_fillColor"/>
+        
+        <attr format="dimension|reference" name="plv_lineWidth"/>
+        
+        <attr format="integer|reference" name="plv_freezeDuration"/>
+        
+        <attr format="boolean|reference" name="plv_enableAutoClean"/>
+        
+        <attr format="boolean|reference" name="plv_enableSkip"/>
+        
+        <attr format="boolean|reference" name="plv_enableHapticFeedback"/>
+    </declare-styleable>
+    <declare-styleable name="QuantumSecurityBannerView">
+        <attr format="boolean" name="qsbAutoScroll"/>
+        <attr format="integer" name="qsbAutoScrollInterval"/>
+        <attr format="reference" name="qsbCtaIcon"/>
+        <attr format="string" name="qsbCtaLabel"/>
+    </declare-styleable>
+    <declare-styleable name="SearchView">
+        <attr format="string" name="sv_hint_text"/>
+        <attr format="color|reference" name="svBackgroundColor"/>
+        <attr format="dimension" name="svCornerRadius"/>
+    </declare-styleable>
+    <declare-styleable name="SideBarView">
+        <attr format="color|reference" name="sidebarSelectTextColor"/>
+        <attr format="color|reference" name="sidebarUnSelectTextColor"/>
+        <attr format="dimension" name="sidebarSelectTextSize"/>
+        <attr format="dimension" name="sidebarUnSelectTextSize"/>
+
+        <attr format="reference" name="sidebarWordBackground"/>
+        <attr format="color|reference" name="sidebarWordTextColor"/>
+        <attr format="dimension" name="sidebarWordTextSize"/>
+
+        <attr format="boolean" name="is_auto_play"/>
+        <attr format="integer" name="scroll_time"/>
+
+    </declare-styleable>
+    <declare-styleable name="TriangleView">
+        
+        <attr name="tlv_mode">
+            <!--倒三角-->
+            <enum name="inverted" value="0"/>
+            <!--正三角-->
+            <enum name="regular" value="1"/>
+        </attr>
+        
+        <attr format="color|reference" name="tlv_color"/>
+    </declare-styleable>
+    <declare-styleable name="UIKitDividerView">
+
+        
+        <attr name="uikit_dividerColor"/>
+
+        
+        <attr format="dimension|reference" name="uikit_dividerThickness"/>
+
+        
+        <attr format="enum" name="uikit_dividerLineType">
+            <enum name="solid_path" value="0"/>
+            <enum name="dash_path" value="1"/>
+        </attr>
+
+        
+        <attr format="dimension|reference" name="uikit_dashWidth"/>
+
+        
+        <attr format="dimension|reference" name="uikit_dashSpaceWidth"/>
+
+        
+        <attr format="enum" name="uikit_dividerOrientation">
+            <enum name="horizontal" value="0"/>
+            <enum name="vertical" value="1"/>
+        </attr>
+    </declare-styleable>
+    <declare-styleable name="WaterWaveProView">
+        <attr name="progress_max"/>
+        <attr name="progress_value"/>
+
+        <attr name="progress_size"/>
+        <attr name="progress_color"/>
+        <attr name="progress_color_background"/>
+
+        <attr name="text_size"/>
+        <attr name="text_color"/>
+        <attr name="text_show"/>
+        <attr name="text_decimal_num"/>
+
+        <attr name="light_color"/>
+        <attr name="light_show"/>
+
+        <attr name="stroke_color"/>
+        <attr name="stroke_width"/>
+        <attr name="stroke_show"/>
+
+        <attr format="dimension" name="water_wave_width"/>
+        <attr format="dimension" name="water_wave_height"/>
+        <attr format="integer" name="water_wave_speed"/>
+    </declare-styleable>
+    <declare-styleable name="voiceView">
+        
+        <attr format="color" name="middleLine"/>
+        
+        <attr format="dimension" name="middleLineHeight"/>
+        
+        <attr format="color" name="voiceLine"/>
+        
+        <attr format="integer" name="lineSpeed"/>
+        
+        <attr format="dimension" name="rectWidth"/>
+        
+        <attr format="dimension" name="rectSpace"/>
+        
+        <attr format="dimension" name="rectInitHeight"/>
+        
+        <attr format="float" name="maxVolume"/>
+        
+        <attr name="viewMode">
+            <enum name="line" value="0"/>
+            <enum name="rect" value="1"/>
+            <enum name="normal" value="2"/> <!-- 新增：正态分布模式 -->
+        </attr>
+        
+        <attr format="float" name="sensibility"/>
+        
+        <attr name="fineness">
+            <enum name="one" value="1"/>
+            <enum name="two" value="2"/>
+            <enum name="three" value="3"/>
+        </attr>
+        
+        <attr format="integer" name="normalColumnCount"/> 
+        <attr format="dimension" name="normalColumnWidth"/> 
+        <attr format="dimension" name="normalColumnSpacing"/> 
+        <attr format="float" name="normalDecayFactor"/> 
+        
+        <attr format="boolean" name="asymmetricMode"/> 
+    </declare-styleable>
+</resources>
